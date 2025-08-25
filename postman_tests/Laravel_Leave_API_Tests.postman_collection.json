@@ -1,0 +1,644 @@
+{
+  "info": {
+    "name": "Laravel Leave API Tests",
+    "description": "Comprehensive Postman tests for Laravel Leave Repository API endpoints following the Flutter app structure",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{auth_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://your-api-domain.com",
+      "type": "string"
+    },
+    {
+      "key": "auth_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "staff_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has token\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('token');",
+                  "    ",
+                  "    // Store token for subsequent requests",
+                  "    if (jsonData.token) {",
+                  "        pm.collectionVariables.set('auth_token', jsonData.token);",
+                  "    }",
+                  "});",
+                  "",
+                  "pm.test(\"Response time is less than 5000ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(5000);",
+                  "});",
+                  "",
+                  "pm.test(\"Content-Type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"test@example.com\",\n    \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "User Info",
+      "item": [
+        {
+          "name": "Get User Info",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has data structure\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('data');",
+                  "});",
+                  "",
+                  "pm.test(\"User data contains profile_staff\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.data) {",
+                  "        pm.expect(jsonData.data).to.have.property('profile_staff');",
+                  "        ",
+                  "        // Store staff_id for leave requests",
+                  "        if (jsonData.data.profile_staff && jsonData.data.profile_staff.staff_id) {",
+                  "            pm.collectionVariables.set('staff_id', jsonData.data.profile_staff.staff_id);",
+                  "        }",
+                  "    }",
+                  "});",
+                  "",
+                  "pm.test(\"Profile staff has required fields\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.data && jsonData.data.profile_staff) {",
+                  "        var profileStaff = jsonData.data.profile_staff;",
+                  "        pm.expect(profileStaff).to.have.property('staff_id');",
+                  "        pm.expect(profileStaff).to.have.property('full_name');",
+                  "        pm.expect(profileStaff).to.have.property('email');",
+                  "        pm.expect(profileStaff).to.have.property('position_id');",
+                  "    }",
+                  "});",
+                  "",
+                  "pm.test(\"Response time is less than 3000ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/user-info",
+              "host": ["{{base_url}}"],
+              "path": ["api", "user-info"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Leave Management",
+      "item": [
+        {
+          "name": "Get All Leaves",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has data structure\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('data');",
+                  "});",
+                  "",
+                  "pm.test(\"Data is an array\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.data) {",
+                  "        pm.expect(jsonData.data).to.be.an('array');",
+                  "    }",
+                  "});",
+                  "",
+                  "pm.test(\"Leave items have required fields\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.data && jsonData.data.length > 0) {",
+                  "        var leave = jsonData.data[0];",
+                  "        pm.expect(leave).to.have.property('StaffID');",
+                  "        pm.expect(leave).to.have.property('TypeLeaveID');",
+                  "        pm.expect(leave).to.have.property('StartDate');",
+                  "        pm.expect(leave).to.have.property('EndDate');",
+                  "        pm.expect(leave).to.have.property('Description');",
+                  "    }",
+                  "});",
+                  "",
+                  "pm.test(\"Response time is less than 3000ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                  "});",
+                  "",
+                  "pm.test(\"Content-Type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/leave_requests/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "leave_requests", ""]
+            }
+          }
+        },
+        {
+          "name": "Create Leave Request - Valid",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response indicates success\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    // Check for success indicators as per repository logic",
+                  "    var hasData = jsonData.hasOwnProperty('data');",
+                  "    var hasSuccess = jsonData.hasOwnProperty('success');",
+                  "    ",
+                  "    pm.expect(hasData || hasSuccess).to.be.true;",
+                  "});",
+                  "",
+                  "pm.test(\"No error message in response\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.message) {",
+                  "        // If there's a message, it should not indicate failure",
+                  "        pm.expect(jsonData.message.toLowerCase()).to.not.include('error');",
+                  "        pm.expect(jsonData.message.toLowerCase()).to.not.include('failed');",
+                  "    }",
+                  "});",
+                  "",
+                  "pm.test(\"Response time is less than 5000ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(5000);",
+                  "});",
+                  "",
+                  "pm.test(\"Content-Type is application/json\", function () {",
+                  "    pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Generate dates for the leave request",
+                  "var now = new Date();",
+                  "var startDate = new Date(now.getTime() + (7 * 24 * 60 * 60 * 1000)); // 7 days from now",
+                  "var endDate = new Date(now.getTime() + (9 * 24 * 60 * 60 * 1000)); // 9 days from now",
+                  "",
+                  "// Format dates as YYYY-MM-DD",
+                  "var formatDate = function(date) {",
+                  "    return date.getFullYear() + '-' + ",
+                  "           String(date.getMonth() + 1).padStart(2, '0') + '-' + ",
+                  "           String(date.getDate()).padStart(2, '0');",
+                  "};",
+                  "",
+                  "pm.collectionVariables.set('start_date', formatDate(startDate));",
+                  "pm.collectionVariables.set('end_date', formatDate(endDate));",
+                  "pm.collectionVariables.set('booking_date', formatDate(now));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"StaffID\": \"{{staff_id}}\",\n    \"TypeLeaveID\": \"1\",\n    \"NumberOfDay\": 2,\n    \"StartDate\": \"{{start_date}}\",\n    \"StartTime\": \"08:00:00\",\n    \"EndDate\": \"{{end_date}}\",\n    \"EndTime\": \"17:00:00\",\n    \"RequestBy\": \"{{staff_id}}\",\n    \"Certifier\": \"MANAGER001\",\n    \"Authorizer\": \"HR001\",\n    \"Description\": \"Annual vacation leave for personal time\",\n    \"Inputter\": \"{{staff_id}}\",\n    \"BookingDate\": \"{{booking_date}}\",\n    \"NumberOfHour\": 16,\n    \"NumberOfMinute\": 0,\n    \"StdWorkingPerDay\": 8\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/leave_requests/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "leave_requests", ""]
+            }
+          }
+        },
+        {
+          "name": "Create Leave Request - Missing Required Fields",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code indicates error (4xx or 5xx)\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([400, 401, 422, 500]);",
+                  "});",
+                  "",
+                  "pm.test(\"Response contains error message\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('message');",
+                  "    pm.expect(jsonData.message).to.be.a('string');",
+                  "    pm.expect(jsonData.message.length).to.be.greaterThan(0);",
+                  "});",
+                  "",
+                  "pm.test(\"Response time is less than 3000ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(3000);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"StaffID\": \"{{staff_id}}\",\n    \"Description\": \"Incomplete leave request for testing validation\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/leave_requests/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "leave_requests", ""]
+            }
+          }
+        },
+        {
+          "name": "Create Leave Request - Invalid Date Range",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code indicates error (4xx or 5xx)\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([400, 422, 500]);",
+                  "});",
+                  "",
+                  "pm.test(\"Response contains error message\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property('message');",
+                  "});",
+                  "",
+                  "pm.test(\"Error message mentions date validation\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (jsonData.message) {",
+                  "        var message = jsonData.message.toLowerCase();",
+                  "        var hasDateError = message.includes('date') || ",
+                  "                           message.includes('invalid') || ",
+                  "                           message.includes('range');",
+                  "        pm.expect(hasDateError).to.be.true;",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"StaffID\": \"{{staff_id}}\",\n    \"TypeLeaveID\": \"1\",\n    \"NumberOfDay\": 2,\n    \"StartDate\": \"2024-12-31\",\n    \"StartTime\": \"08:00:00\",\n    \"EndDate\": \"2024-12-01\",\n    \"EndTime\": \"17:00:00\",\n    \"RequestBy\": \"{{staff_id}}\",\n    \"Certifier\": \"MANAGER001\",\n    \"Authorizer\": \"HR001\",\n    \"Description\": \"Invalid date range test - end date before start date\",\n    \"Inputter\": \"{{staff_id}}\",\n    \"BookingDate\": \"2024-11-15\",\n    \"NumberOfHour\": 16,\n    \"NumberOfMinute\": 0,\n    \"StdWorkingPerDay\": 8\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/leave_requests/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "leave_requests", ""]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Authentication Tests",
+      "item": [
+        {
+          "name": "Access Protected Endpoint Without Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 401 Unauthorized\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "",
+                  "pm.test(\"Response contains authentication error\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    // Common authentication error indicators",
+                  "    var hasAuthError = jsonData.hasOwnProperty('message') ||",
+                  "                       jsonData.hasOwnProperty('error') ||",
+                  "                       jsonData.hasOwnProperty('unauthenticated');",
+                  "    pm.expect(hasAuthError).to.be.true;",
+                  "});",
+                  "",
+                  "pm.test(\"Response time is less than 2000ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/leave_requests/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "leave_requests", ""]
+            }
+          }
+        },
+        {
+          "name": "Access Protected Endpoint With Invalid Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 401 Unauthorized\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "",
+                  "pm.test(\"Response contains authentication error\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    var hasAuthError = jsonData.hasOwnProperty('message') ||",
+                  "                       jsonData.hasOwnProperty('error') ||",
+                  "                       jsonData.hasOwnProperty('unauthenticated');",
+                  "    pm.expect(hasAuthError).to.be.true;",
+                  "});",
+                  "",
+                  "pm.test(\"Response time is less than 2000ms\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(2000);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer invalid_token_here",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/leave_requests/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "leave_requests", ""]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Edge Cases",
+      "item": [
+        {
+          "name": "Create Leave Request - Zero Days",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Response validates zero-day leave request\", function () {",
+                  "    // This could be either accepted (for hour-based leaves) or rejected",
+                  "    // depending on business logic",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 400, 422]);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has proper structure\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.be.an('object');",
+                  "});",
+                  "",
+                  "pm.test(\"Response time is reasonable\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(5000);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"StaffID\": \"{{staff_id}}\",\n    \"TypeLeaveID\": \"1\",\n    \"NumberOfDay\": 0,\n    \"StartDate\": \"{{start_date}}\",\n    \"StartTime\": \"14:00:00\",\n    \"EndDate\": \"{{start_date}}\",\n    \"EndTime\": \"16:00:00\",\n    \"RequestBy\": \"{{staff_id}}\",\n    \"Certifier\": \"MANAGER001\",\n    \"Authorizer\": \"HR001\",\n    \"Description\": \"Two-hour leave for medical appointment\",\n    \"Inputter\": \"{{staff_id}}\",\n    \"BookingDate\": \"{{booking_date}}\",\n    \"NumberOfHour\": 2,\n    \"NumberOfMinute\": 0,\n    \"StdWorkingPerDay\": 8\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/leave_requests/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "leave_requests", ""]
+            }
+          }
+        },
+        {
+          "name": "Create Leave Request - Large Data",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"API handles large description field\", function () {",
+                  "    // Should either accept it or return appropriate validation error",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 400, 413, 422]);",
+                  "});",
+                  "",
+                  "pm.test(\"Response time is acceptable even with large data\", function () {",
+                  "    pm.expect(pm.response.responseTime).to.be.below(10000);",
+                  "});",
+                  "",
+                  "pm.test(\"Response structure is maintained\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.be.an('object');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"StaffID\": \"{{staff_id}}\",\n    \"TypeLeaveID\": \"1\",\n    \"NumberOfDay\": 1,\n    \"StartDate\": \"{{start_date}}\",\n    \"StartTime\": \"08:00:00\",\n    \"EndDate\": \"{{start_date}}\",\n    \"EndTime\": \"17:00:00\",\n    \"RequestBy\": \"{{staff_id}}\",\n    \"Certifier\": \"MANAGER001\",\n    \"Authorizer\": \"HR001\",\n    \"Description\": \"This is a very long description field that tests the API's ability to handle large amounts of text data. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt.\",\n    \"Inputter\": \"{{staff_id}}\",\n    \"BookingDate\": \"{{booking_date}}\",\n    \"NumberOfHour\": 8,\n    \"NumberOfMinute\": 0,\n    \"StdWorkingPerDay\": 8\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/leave_requests/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "leave_requests", ""]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

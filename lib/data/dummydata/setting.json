@@ -1,0 +1,48 @@
+{
+  "success": true,
+  "status": 200,
+  "data": {
+      "contact_us": {
+          "photo": "https://palm.moh-dhs.com/storage/company_profile/logoOnlinsehop.jpg",
+          "stay_withus": "sdfsdf",
+          "address": "HR3V2X Phnom Penh",
+          "phone": "0968162264",
+          "latitude": "11.5485566520269",
+          "longitude": "104.823156",
+          "website": "https://phoneshop.palmtechnology.net/",
+          "facebook": "https://www.facebook.com/share/G83ikyfQiQam8QS1/?mibextid=LQQJ4d",
+          "instagram": "https://www.instagram.com/bunthoeurn_phone_shop?igsh=aDIzMzB5NGt6dnpy&utm_source=qr",
+          "youtube": "https://google.com/",
+          "email": "reader@admin.com",
+          "branch_en": "phome penh1",
+          "telegram": "https://t.me/btphonerepair",
+          "tiktok": "https://www.tiktok.com/@btb0102phoneshop?_t=8nnGMefP7i5&_r=1"
+      },
+      "about_us": {
+          "photo": "https://palm.moh-dhs.com/storage/company_profile/logoOnlinsehop.jpg",
+          "who_weare": "dsfdsf",
+          "our_mission": "sdfsdfdsf",
+          "our_vission": "sdfdsfdsf"
+      },
+      "term_condition": {
+          "photo": "https://palm.moh-dhs.com/storage/company_profile/logoOnlinsehop.jpg",
+          "term_condition": "sdfsdfdsfsdf"
+      },
+      "Policy_Pracy": {
+          "photo": "https://palm.moh-dhs.com/storage/company_profile/logoOnlinsehop.jpg",
+          "Policy_Pracy": "sdfdsfdsf"
+      },
+      "Return_Policy": {
+          "photo": "https://palm.moh-dhs.com/storage/company_profile/logoOnlinsehop.jpg",
+          "Return_Policy": "dsfsdf"
+      },
+      "artical_categories": {
+          "documentation": "dsfsgfsgerfgfg",
+          "paywithwing": "sdfdsfdsfdsf",
+          "paybyoffline": "sdfsdfsdfd",
+          "paywithpipay": "sdfdsfsdf"
+      }
+  },
+  "message": "Get Help Successfully!",
+  "currency": "$"
+}

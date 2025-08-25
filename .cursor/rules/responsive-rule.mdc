@@ -1,0 +1,27 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Responsive Flutter Components Rule
+
+## Core Principles
+- Always use relative sizing and flexible layout widgets
+- Avoid hardcoded pixel values for width, height, padding, or margin
+- Design components to adapt to different screen sizes and orientations
+
+## Required Practices
+- Use MediaQuery, LayoutBuilder, Flexible, and Expanded for adaptive layouts
+- Test each component on multiple device sizes and orientations
+- Break UI into small, reusable widgets with modular design
+- Use Container, SizedBox, or similar widgets only with dynamic or proportional sizing
+- Wrap content in SafeArea if near screen edges
+- Use scalable units for text and icons (consider flutter_screenutil)
+
+## Summary
+Every component must be built and tested with responsiveness as a priority, using flexible layouts and relative sizing—never fixed pixels. 
