@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:skeletonizer/skeletonizer.dart';
 import 'package:palm_ecommerce_mobile_app_2/providers/profile_provider.dart';
 import 'package:palm_ecommerce_mobile_app_2/providers/auth/auth_provider.dart';
-import 'package:palm_ecommerce_mobile_app_2/providers/staff/staff_provder.dart';
 import 'package:palm_ecommerce_mobile_app_2/providers/asyncvalue.dart';
 import 'package:palm_ecommerce_mobile_app_2/models/profile/profile.dart';
 
@@ -67,8 +66,8 @@ class ProfileCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer3<ProfileProvider, AuthProvider, StaffProvider>(
-      builder: (context, profileProvider, authProvider, staffProvider, child) {
+    return Consumer2<ProfileProvider, AuthProvider>(
+      builder: (context, profileProvider, authProvider, child) {
         final asyncValue = profileProvider.profileInfo;
 
         // Check if user is logged in first
@@ -87,8 +86,6 @@ class ProfileCard extends StatelessWidget {
                 timeout: const Duration(seconds: 3));
             if (authReady) {
               profileProvider.getProfileInfoSafe();
-              // Also load staff info for manager and supervisor data
-              staffProvider.getStaffInfoSafe();
             } else {
               print('❌ ProfileCard: Auth not ready, showing skeleton');
             }
@@ -101,7 +98,7 @@ class ProfileCard extends StatelessWidget {
           case AsyncValueState.loading:
             return _buildSkeletonProfileCard();
           case AsyncValueState.success:
-            return _buildProfileCard(asyncValue.data!, staffProvider);
+            return _buildProfileCard(asyncValue.data!);
           case AsyncValueState.error:
             // If it's an auth error and we just logged in, try to reload
             if (asyncValue.error
@@ -113,7 +110,6 @@ class ProfileCard extends StatelessWidget {
                     timeout: const Duration(seconds: 2));
                 if (authReady) {
                   profileProvider.getProfileInfoSafe();
-                  staffProvider.getStaffInfoSafe();
                 }
               });
               return _buildSkeletonProfileCard();
@@ -124,29 +120,13 @@ class ProfileCard extends StatelessWidget {
     );
   }
 
-  // Helper functions to extract manager and supervisor names from StaffInfo
-  String _getManagerName(StaffProvider staffProvider) {
-    final staffInfo = staffProvider.staffInfo;
-    if (staffInfo?.state == AsyncValueState.success &&
-        staffInfo?.data?.manager != null) {
-      final manager = staffInfo!.data!.manager!;
-      final firstName = manager.firstNameEng ?? manager.firstNameKh ?? '';
-      final lastName = manager.lastNameEng ?? manager.lastNameKh ?? '';
-      return '${firstName} ${lastName}'.trim();
-    }
-    return 'Not Assigned';
+  // Helper functions to get manager and supervisor names from ProfileInfo
+  String _getManagerName(ProfileInfo profile) {
+    return profile.managerName ?? 'Not Assigned';
   }
 
-  String _getSupervisorName(StaffProvider staffProvider) {
-    final staffInfo = staffProvider.staffInfo;
-    if (staffInfo?.state == AsyncValueState.success &&
-        staffInfo?.data?.supervisor != null) {
-      final supervisor = staffInfo!.data!.supervisor!;
-      final firstName = supervisor.firstNameEng ?? supervisor.firstNameKh ?? '';
-      final lastName = supervisor.lastNameEng ?? supervisor.lastNameKh ?? '';
-      return '${firstName} ${lastName}'.trim();
-    }
-    return 'Not Assigned';
+  String _getSupervisorName(ProfileInfo profile) {
+    return profile.supervisorName ?? 'Not Assigned';
   }
 
   Widget _buildSkeletonProfileCard() {
@@ -168,7 +148,7 @@ class ProfileCard extends StatelessWidget {
     return Skeletonizer(
       enabled: true,
       effect: const ShimmerEffect(),
-      child: _buildProfileCard(fakeProfile, null),
+      child: _buildProfileCard(fakeProfile),
     );
   }
 
@@ -213,7 +193,7 @@ class ProfileCard extends StatelessWidget {
     );
   }
 
-  Widget _buildProfileCard(ProfileInfo profile, StaffProvider? staffProvider) {
+  Widget _buildProfileCard(ProfileInfo profile) {
     return Container(
       width: double.infinity,
       constraints: const BoxConstraints(
@@ -299,7 +279,7 @@ class ProfileCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        profile.position.toString(),
+                        'Not Specified',
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.85),
                           fontFamily: 'Inter',
@@ -363,18 +343,14 @@ class ProfileCard extends StatelessWidget {
                     children: [
                       InfoRow(
                         icon: Icons.supervisor_account,
-                        text: staffProvider != null
-                            ? _getManagerName(staffProvider)
-                            : (profile.managerName ?? 'Not Assigned'),
+                        text: _getManagerName(profile),
                         label: 'Head Of Dept',
                         iconSize: 14,
                       ),
                       const SizedBox(height: 8),
                       InfoRow(
                         icon: Icons.person,
-                        text: staffProvider != null
-                            ? _getSupervisorName(staffProvider)
-                            : (profile.supervisorName ?? 'Not Assigned'),
+                        text: _getSupervisorName(profile),
                         label: 'Manager',
                         iconSize: 14,
                       ),

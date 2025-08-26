@@ -53,6 +53,8 @@ class UserInfo {
   final String? fbId;
   final String? roleId;
   final String? staffId;
+  final String? manager;
+  final String? supervisor;
 
   UserInfo({
     required this.id,
@@ -109,6 +111,8 @@ class UserInfo {
     this.fbId,
     this.roleId,
     this.staffId,
+    this.manager,
+    this.supervisor,
   });
 
   

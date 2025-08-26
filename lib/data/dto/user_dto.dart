@@ -114,13 +114,13 @@ class UserDto {
       gender: json["gender"] ?? "",
       hskId: json["hsk_id"] ?? "",
       dob: json["dob"] ?? "",
-      prefix: json["prefix"] ?? "",
-      voucherDate: json["voucher_date"] ?? "",
       alreadyGiveVoucher: json["already_give_voucher"] ?? "",
       cardNumber: json["card_number"] ?? "",
       fbId: json["fb_id"] ?? "",
       roleId: json["role_id"] ?? "",
-      staffId:json["staff_id"]
+      staffId:json["staff_id"],
+      manager:json["manager"],
+      supervisor:json["supervisor"],
     );
   }
   
@@ -323,9 +323,9 @@ class UserDto {
       position: _formatPosition(user.position),
       department: null,
       managerId: null,
-      managerName: null,
+      managerName: user.manager,
       supervisorId: null,
-      supervisorName: null,
+      supervisorName: user.supervisor,
       branchId: user.branchId,
       branchName: null,
       companyId: user.companyId,
