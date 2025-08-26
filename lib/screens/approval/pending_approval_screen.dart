@@ -14,145 +14,61 @@ class PendingApprovalScreen extends StatefulWidget {
   State<PendingApprovalScreen> createState() => _PendingApprovalScreenState();
 }
 
-class _PendingApprovalScreenState extends State<PendingApprovalScreen> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-  
+class _PendingApprovalScreenState extends State<PendingApprovalScreen> {
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
-    
+
     // Load approval dashboard data when screen initializes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ApprovalProvider>().getApprovalDashboard();
     });
-  }
-  
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          widget.title, 
-          style: PalmTextStyles.title.copyWith(color: PalmColors.white),
+        title: Consumer<ApprovalProvider>(
+          builder: (context, approvalProvider, child) {
+            final totalPending = approvalProvider.totalPendingCount;
+
+            return Row(
+              children: [
+                Text(
+                  widget.title,
+                  style: PalmTextStyles.title.copyWith(color: PalmColors.white),
+                ),
+                if (totalPending > 0) ...[
+                  const SizedBox(width: 12),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: PalmColors.warning,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      totalPending.toString(),
+                      style: PalmTextStyles.label.copyWith(
+                        color: PalmColors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            );
+          },
         ),
         backgroundColor: PalmColors.primary,
         elevation: 0,
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(48),
-          child: Container(
-            width: double.infinity,
-            color: PalmColors.primary,
-            child: Consumer<ApprovalProvider>(
-              builder: (context, approvalProvider, child) {
-                final totalPending = approvalProvider.totalPendingCount;
-                final managerPending = approvalProvider.managerPendingCount;
-                final supervisorPending = approvalProvider.supervisorPendingCount;
-                
-                return TabBar(
-                  controller: _tabController,
-                  labelColor: PalmColors.white,
-                  unselectedLabelColor: PalmColors.neutralLight,
-                  indicatorColor: PalmColors.white,
-                  indicatorWeight: 3,
-                  labelStyle: PalmTextStyles.button.copyWith(fontWeight: FontWeight.w500),
-                  unselectedLabelStyle: PalmTextStyles.button,
-                  tabs: [
-                    Tab(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text('All'),
-                          if (totalPending > 0) ...[
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: PalmColors.warning,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Text(
-                                totalPending.toString(),
-                                style: PalmTextStyles.label.copyWith(
-                                  color: PalmColors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    Tab(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text('Manager'),
-                          if (managerPending > 0) ...[
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: PalmColors.danger,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Text(
-                                managerPending.toString(),
-                                style: PalmTextStyles.label.copyWith(
-                                  color: PalmColors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    Tab(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text('Supervisor'),
-                          if (supervisorPending > 0) ...[
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: PalmColors.info,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Text(
-                                supervisorPending.toString(),
-                                style: PalmTextStyles.label.copyWith(
-                                  color: PalmColors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ],
-                );
-              }
-            ),
-          ),
-        ),
       ),
       body: Consumer<ApprovalProvider>(
         builder: (context, approvalProvider, child) {
           final approvalDashboard = approvalProvider.approvalDashboard;
-          
+
           if (approvalDashboard == null) {
             return const Center(
               child: Text(
@@ -176,23 +92,13 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> with Sing
 
             case AsyncValueState.success:
               final data = approvalDashboard.data!;
-              return TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildApprovalList([
-                    ...data.managerPending.requests,
-                    ...data.supervisorPending.requests,
-                  ], 'All Pending Approvals'),
-                  _buildApprovalList(
-                    data.managerPending.requests,
-                    'Manager Pending Approvals',
-                  ),
-                  _buildApprovalList(
-                    data.supervisorPending.requests,
-                    'Supervisor Pending Approvals',
-                  ),
-                ],
-              );
+              // Combine all pending approvals from manager and supervisor
+              final allPendingApprovals = [
+                ...data.managerPending.requests,
+                ...data.supervisorPending.requests,
+              ];
+              return _buildApprovalList(
+                  allPendingApprovals, 'All Pending Approvals');
           }
         },
       ),
@@ -247,7 +153,7 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> with Sing
       ),
     );
   }
-  
+
   Widget _buildApprovalList(List<LeaveRequest> approvals, String emptyMessage) {
     if (approvals.isEmpty) {
       return Center(
@@ -277,12 +183,13 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> with Sing
         ),
       );
     }
-    
+
     // Sort approvals by latest date/time first
     final sortedApprovals = _sortApprovalsByLatest(approvals);
-    
+
     return RefreshIndicator(
-      onRefresh: () => context.read<ApprovalProvider>().refreshApprovalDashboard(),
+      onRefresh: () =>
+          context.read<ApprovalProvider>().refreshApprovalDashboard(),
       child: ListView.builder(
         itemCount: sortedApprovals.length,
         padding: EdgeInsets.zero,
@@ -297,12 +204,12 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> with Sing
   /// If same day, sort by latest hour
   List<LeaveRequest> _sortApprovalsByLatest(List<LeaveRequest> approvals) {
     final sortedList = List<LeaveRequest>.from(approvals);
-    
+
     sortedList.sort((a, b) {
       try {
         final dateA = DateTime.parse(a.createdAt);
         final dateB = DateTime.parse(b.createdAt);
-        
+
         // Sort in descending order (latest first)
         return dateB.compareTo(dateA);
       } catch (e) {
@@ -310,7 +217,7 @@ class _PendingApprovalScreenState extends State<PendingApprovalScreen> with Sing
         return 0;
       }
     });
-    
+
     return sortedList;
   }
 }
@@ -335,12 +242,13 @@ class ApprovalListTile extends StatelessWidget {
             ),
           ),
         );
-        
+
         // If approval action was successful, show message and refresh
         if (result == true && context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Approval action completed for ${leaveRequest.firstNameEng} ${leaveRequest.lastNameEng}'),
+              content: Text(
+                  'Approval action completed for ${leaveRequest.firstNameEng} ${leaveRequest.lastNameEng}'),
               duration: const Duration(seconds: 2),
               backgroundColor: PalmColors.success,
             ),
@@ -425,7 +333,8 @@ class ApprovalListTile extends StatelessWidget {
                               ),
                               child: Center(
                                 child: Text(
-                                  _getFirstLetter('${leaveRequest.firstNameEng} ${leaveRequest.lastNameEng}'),
+                                  _getFirstLetter(
+                                      '${leaveRequest.firstNameEng} ${leaveRequest.lastNameEng}'),
                                   style: PalmTextStyles.label.copyWith(
                                     color: PalmColors.white,
                                     fontWeight: FontWeight.bold,
@@ -449,13 +358,13 @@ class ApprovalListTile extends StatelessWidget {
                                     overflow: TextOverflow.ellipsis,
                                     maxLines: 1,
                                   ),
-
                                 ],
                               ),
                             ),
                             // Leave type badge
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
                               decoration: BoxDecoration(
                                 color: PalmColors.info.withOpacity(0.8),
                                 borderRadius: BorderRadius.circular(5),
@@ -508,7 +417,8 @@ class ApprovalListTile extends StatelessWidget {
                             ),
                             // Duration badge
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 2),
                               decoration: BoxDecoration(
                                 color: Colors.grey.withOpacity(0.2),
                                 borderRadius: BorderRadius.circular(8),
@@ -608,8 +518,11 @@ class ApprovalListTile extends StatelessWidget {
   }
 
   String _capitalizeLeaveType(String leaveType) {
-    return leaveType.split(' ')
-        .map((word) => word.isEmpty ? '' : word[0].toUpperCase() + word.substring(1).toLowerCase())
+    return leaveType
+        .split(' ')
+        .map((word) => word.isEmpty
+            ? ''
+            : word[0].toUpperCase() + word.substring(1).toLowerCase())
         .join(' ');
   }
 

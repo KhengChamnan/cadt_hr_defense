@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:palm_ecommerce_mobile_app_2/theme/app_theme.dart';
 import 'package:palm_ecommerce_mobile_app_2/utils/animations_util.dart';
 import 'package:palm_ecommerce_mobile_app_2/services/holiday_service.dart';
+import 'package:palm_ecommerce_mobile_app_2/providers/staff/staff_provder.dart';
+import 'package:palm_ecommerce_mobile_app_2/providers/asyncvalue.dart';
 
 /// A bottom sheet modal for date range selection with slide-up animation
 /// This provides a modern mobile UX for date selection
@@ -348,6 +351,44 @@ class _DateRangeBottomSheetContentState
             ],
           ),
         ],
+
+        // Annual leave balance display (using Consumer to get StaffProvider)
+        const SizedBox(height: PalmSpacings.s),
+        Consumer<StaffProvider>(
+          builder: (context, staffProvider, child) {
+            final balanceText = _calculateRemainingBalance(staffProvider);
+            final wouldBeNegative =
+                _wouldResultInNegativeBalance(staffProvider);
+
+            if (balanceText.isEmpty) return const SizedBox.shrink();
+
+            return Row(
+              children: [
+                Icon(
+                  wouldBeNegative
+                      ? Icons.warning_outlined
+                      : Icons.check_circle_outline,
+                  color:
+                      wouldBeNegative ? PalmColors.danger : PalmColors.success,
+                  size: 16,
+                ),
+                const SizedBox(width: PalmSpacings.xs),
+                Expanded(
+                  child: Text(
+                    balanceText,
+                    style: PalmTextStyles.caption.copyWith(
+                      color: wouldBeNegative
+                          ? PalmColors.danger
+                          : PalmColors.success,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
       ],
     );
   }
@@ -395,6 +436,44 @@ class _DateRangeBottomSheetContentState
             fontSize: 12,
             fontStyle: FontStyle.italic,
           ),
+        ),
+
+        // Annual leave balance display for single day
+        const SizedBox(height: PalmSpacings.s),
+        Consumer<StaffProvider>(
+          builder: (context, staffProvider, child) {
+            final balanceText = _calculateRemainingBalance(staffProvider);
+            final wouldBeNegative =
+                _wouldResultInNegativeBalance(staffProvider);
+
+            if (balanceText.isEmpty) return const SizedBox.shrink();
+
+            return Row(
+              children: [
+                Icon(
+                  wouldBeNegative
+                      ? Icons.warning_outlined
+                      : Icons.check_circle_outline,
+                  color:
+                      wouldBeNegative ? PalmColors.danger : PalmColors.success,
+                  size: 16,
+                ),
+                const SizedBox(width: PalmSpacings.xs),
+                Expanded(
+                  child: Text(
+                    balanceText,
+                    style: PalmTextStyles.caption.copyWith(
+                      color: wouldBeNegative
+                          ? PalmColors.danger
+                          : PalmColors.success,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ],
     );
@@ -621,8 +700,9 @@ class _DateRangeBottomSheetContentState
                   style: PalmTextStyles.body.copyWith(
                     color: _getDateTextColor(
                         isSelected, isInRange, isPastDate, isToday, isHoliday),
-                    fontWeight:
-                        isSelected || isToday ? FontWeight.bold : FontWeight.normal,
+                    fontWeight: isSelected || isToday
+                        ? FontWeight.bold
+                        : FontWeight.normal,
                   ),
                 ),
               ),
@@ -702,7 +782,8 @@ class _DateRangeBottomSheetContentState
   }
 
   /// Get background color for date cell
-  Color _getDateCellColor(bool isSelected, bool isInRange, bool isToday, bool isHoliday) {
+  Color _getDateCellColor(
+      bool isSelected, bool isInRange, bool isToday, bool isHoliday) {
     if (isSelected) {
       return PalmColors.primary; // Blue background for selected dates
     } else if (isInRange) {
@@ -714,8 +795,8 @@ class _DateRangeBottomSheetContentState
   }
 
   /// Get text color for date cell
-  Color _getDateTextColor(
-      bool isSelected, bool isInRange, bool isPastDate, bool isToday, bool isHoliday) {
+  Color _getDateTextColor(bool isSelected, bool isInRange, bool isPastDate,
+      bool isToday, bool isHoliday) {
     if (isSelected) {
       return PalmColors.white; // White text on blue background
     } else if (isPastDate) {
@@ -745,6 +826,57 @@ class _DateRangeBottomSheetContentState
       'Dec'
     ];
     return '${date.day} ${months[date.month - 1]} ${date.year}';
+  }
+
+  /// Calculate remaining annual leave balance after the selected date range
+  String _calculateRemainingBalance(StaffProvider staffProvider) {
+    if (_startDate == null || _endDate == null) {
+      return '';
+    }
+
+    if (staffProvider.staffInfo?.state == AsyncValueState.success) {
+      final balance = staffProvider.staffInfo!.data!.balanceAnnually;
+      if (balance != null && balance.isNotEmpty) {
+        final balanceHours = double.tryParse(balance) ?? 0.0;
+        final balanceDays = balanceHours / 8.0;
+
+        // Calculate requested leave days (working days only)
+        final holidayAnalysis =
+            HolidayService.analyzeRange(_startDate!, _endDate!);
+        final requestedDays = holidayAnalysis.workingDays.toDouble();
+
+        // Calculate remaining balance
+        final remainingDays = balanceDays - requestedDays;
+
+        // Handle negative balance - show 0 for clean UI
+        final displayDays = remainingDays < 0 ? 0.0 : remainingDays;
+
+        return '${displayDays.toStringAsFixed(1)} days remaining after this request';
+      }
+    }
+    return 'Balance not available';
+  }
+
+  /// Check if the request would result in negative balance
+  bool _wouldResultInNegativeBalance(StaffProvider staffProvider) {
+    if (_startDate == null || _endDate == null) {
+      return false;
+    }
+
+    if (staffProvider.staffInfo?.state == AsyncValueState.success) {
+      final balance = staffProvider.staffInfo!.data!.balanceAnnually;
+      if (balance != null && balance.isNotEmpty) {
+        final balanceHours = double.tryParse(balance) ?? 0.0;
+        final balanceDays = balanceHours / 8.0;
+
+        final holidayAnalysis =
+            HolidayService.analyzeRange(_startDate!, _endDate!);
+        final requestedDays = holidayAnalysis.workingDays.toDouble();
+
+        return (balanceDays - requestedDays) < 0;
+      }
+    }
+    return false;
   }
 }
 

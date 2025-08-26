@@ -97,10 +97,20 @@ class _LeaveTypeSelectionScreenState extends State<LeaveTypeSelectionScreen> {
         final balanceHours = double.tryParse(balance) ?? 0.0;
         // Convert hours to days (assuming 8 hours = 1 working day)
         final balanceDays = balanceHours / 8.0;
-        return '${balanceDays.toStringAsFixed(1)} days remaining';
+
+        // Calculate remaining balance after the selected date range
+        final holidayAnalysis =
+            HolidayService.analyzeRange(_currentStartDate, _currentEndDate);
+        final requestedDays = holidayAnalysis.workingDays.toDouble();
+        final remainingDays = balanceDays - requestedDays;
+
+        // Handle negative balance - show 0 for clean UI
+        final displayDays = remainingDays < 0 ? 0.0 : remainingDays;
+
+        return '${displayDays.toStringAsFixed(1)} days remaining after this request';
       }
     }
-    return 'Loading balance...';
+    return 'Calculating...';
   }
 
   /// Get description for Sick leave (no balance limit)
@@ -128,9 +138,10 @@ class _LeaveTypeSelectionScreenState extends State<LeaveTypeSelectionScreen> {
         final balanceHours = double.tryParse(balance) ?? 0.0;
 
         // Calculate requested leave days (working days only)
-        final holidayAnalysis = HolidayService.analyzeRange(_currentStartDate, _currentEndDate);
+        final holidayAnalysis =
+            HolidayService.analyzeRange(_currentStartDate, _currentEndDate);
         final requestedDays = holidayAnalysis.workingDays.toDouble();
-        
+
         // Convert requested days to hours (8 hours = 1 working day)
         final requestedHours = requestedDays * 8.0;
 
@@ -250,7 +261,8 @@ class _LeaveTypeSelectionScreenState extends State<LeaveTypeSelectionScreen> {
     }
 
     // Get holiday analysis for the selected date range
-    final holidayAnalysis = HolidayService.analyzeRange(_currentStartDate, _currentEndDate);
+    final holidayAnalysis =
+        HolidayService.analyzeRange(_currentStartDate, _currentEndDate);
 
     // Create submit leave request object
     final submitRequest = SubmitLeaveRequest(

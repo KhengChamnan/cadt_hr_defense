@@ -78,18 +78,6 @@ class _LeaveOverviewScreenState extends State<LeaveOverviewScreen>
         backgroundColor: PalmColors.primary,
         foregroundColor: Colors.white,
         elevation: 0,
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: Colors.white,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white.withOpacity(0.7),
-          tabs: const [
-            Tab(text: 'All'),
-            Tab(text: 'Pending'),
-            Tab(text: 'Approved'),
-            Tab(text: 'Rejected'),
-          ],
-        ),
       ),
       body: Consumer2<LeaveProvider, StaffProvider>(
         builder: (context, leaveProvider, staffProvider, child) {
@@ -105,28 +93,72 @@ class _LeaveOverviewScreenState extends State<LeaveOverviewScreen>
               .where((leave) => leave.status?.toLowerCase() == 'pending')
               .toList();
           final approvedLeaves = allLeaves
-              .where((leave) => 
+              .where((leave) =>
                   leave.status?.toLowerCase() == 'approved' ||
                   leave.status?.toLowerCase() == 'supervisor_approved')
               .toList();
           final rejectedLeaves = allLeaves
-              .where((leave) => 
+              .where((leave) =>
                   leave.status?.toLowerCase() == 'rejected' ||
                   leave.status?.toLowerCase() == 'supervisor_rejected')
               .toList();
 
-
-          return TabBarView(
-            controller: _tabController,
+          return Column(
             children: [
-              // All Leaves
-              _buildCombinedView(allLeaves),
-              // Pending Leaves
-              _buildCombinedView(pendingLeaves),
-              // Approved Leaves
-              _buildCombinedView(approvedLeaves),
-              // Rejected Leaves
-              _buildCombinedView(rejectedLeaves),
+              // Pie Chart Section - Shows leave balance from staff info
+              Container(
+                height: 240,
+                margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: PalmColors.backGroundColor,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: LeavePieChart(
+                  chartData:
+                      staffProvider.staffInfo?.state == AsyncValueState.success
+                          ? LeaveData.generateChartDataFromStaff(
+                              staffProvider.staffInfo!.data)
+                          : LeaveData.generateChartDataFromLeaves(
+                              []), // fallback to empty leaves data
+                ),
+              ),
+
+              // Tab Bar
+              Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: PalmColors.primary,
+                ),
+                child: TabBar(
+                  controller: _tabController,
+                  indicatorColor: Colors.white,
+                  labelColor: Colors.white,
+                  unselectedLabelColor: Colors.white.withOpacity(0.7),
+                  tabs: const [
+                    Tab(text: 'All'),
+                    Tab(text: 'Pending'),
+                    Tab(text: 'Approved'),
+                    Tab(text: 'Rejected'),
+                  ],
+                ),
+              ),
+
+              // Tab Bar View
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    // All Leaves
+                    _buildLeaveListView(allLeaves),
+                    // Pending Leaves
+                    _buildLeaveListView(pendingLeaves),
+                    // Approved Leaves
+                    _buildLeaveListView(approvedLeaves),
+                    // Rejected Leaves
+                    _buildLeaveListView(rejectedLeaves),
+                  ],
+                ),
+              ),
             ],
           );
         },
@@ -146,11 +178,12 @@ class _LeaveOverviewScreenState extends State<LeaveOverviewScreen>
     }
   }
 
-  // Combined view with pie chart and leave list
-  Widget _buildCombinedView(List<LeaveInfo> leaves) {
+  // Leave list view (without pie chart)
+  Widget _buildLeaveListView(List<LeaveInfo> leaves) {
     return Consumer2<LeaveProvider, StaffProvider>(
       builder: (context, leaveProvider, staffProvider, child) {
-        final isLoading = leaveProvider.leaveList?.state == AsyncValueState.loading;
+        final isLoading =
+            leaveProvider.leaveList?.state == AsyncValueState.loading;
 
         // Handle error state
         if (leaveProvider.leaveList?.state == AsyncValueState.error) {
@@ -195,26 +228,8 @@ class _LeaveOverviewScreenState extends State<LeaveOverviewScreen>
             child: ListView(
               controller: _scrollController,
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: EdgeInsets.zero,
+              padding: const EdgeInsets.only(top: 8),
               children: [
-                // Pie Chart Section - Shows leave balance from staff info
-                Container(
-                  height: 240,
-                  margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: PalmColors.backGroundColor,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: LeavePieChart(
-                    chartData:
-                        staffProvider.staffInfo?.state == AsyncValueState.success
-                            ? LeaveData.generateChartDataFromStaff(
-                                staffProvider.staffInfo!.data)
-                            : LeaveData.generateChartDataFromLeaves(
-                                []), // fallback to empty leaves data
-                  ),
-                ),
-
                 // Leave List Section - Shows filtered leaves based on tab
                 if (leaves.isEmpty && !isLoading)
                   const Padding(
@@ -242,10 +257,13 @@ class _LeaveOverviewScreenState extends State<LeaveOverviewScreen>
                   )
                 else
                   // Use LeaveListTile for each leave item (show skeleton when loading)
-                  ...(isLoading && leaves.isEmpty 
-                      ? List.generate(3, (index) => LeaveListTile(
-                            leave: LeaveInfo(), // Empty leave info for skeleton
-                          ))
+                  ...(isLoading && leaves.isEmpty
+                      ? List.generate(
+                          3,
+                          (index) => LeaveListTile(
+                                leave:
+                                    LeaveInfo(), // Empty leave info for skeleton
+                              ))
                       : leaves
                           .map((leave) => LeaveListTile(
                                 leave: leave,

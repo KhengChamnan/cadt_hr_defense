@@ -14,7 +14,7 @@ import 'package:palm_ecommerce_mobile_app_2/widgets/loading_widget.dart';
 /// - Approve or reject the leave request
 class ApprovalDetailScreen extends StatefulWidget {
   final LeaveRequest leaveRequest;
-  
+
   const ApprovalDetailScreen({
     super.key,
     required this.leaveRequest,
@@ -26,10 +26,11 @@ class ApprovalDetailScreen extends StatefulWidget {
 
 class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
   final TextEditingController _commentController = TextEditingController();
-  
+
   // Get the current approval role
-  ApprovalRole get _currentRole => ApprovalRole.fromString(widget.leaveRequest.approvalRole);
-  
+  ApprovalRole get _currentRole =>
+      ApprovalRole.fromString(widget.leaveRequest.approvalRole);
+
   // Check if current user is manager and can see supervisor comments
   bool get _canViewSupervisorComments => _currentRole == ApprovalRole.manager;
 
@@ -44,14 +45,14 @@ class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
       _showValidationError('Please add a comment before approving');
       return;
     }
-    
+
     try {
       final success = await context.read<ApprovalProvider>().approveLeave(
-        leaveId: int.parse(widget.leaveRequest.leaveId),
-        comment: _commentController.text.trim(),
-        role: _currentRole,
-      );
-      
+            leaveId: int.parse(widget.leaveRequest.leaveId),
+            comment: _commentController.text.trim(),
+            role: _currentRole,
+          );
+
       if (success) {
         // Show success bottom sheet
         await ApprovalResultBottomSheet.showSuccess(
@@ -59,7 +60,8 @@ class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
           actionType: "approve",
           onDone: () {
             Navigator.of(context).pop(); // Close bottom sheet
-            Navigator.of(context).pop(true); // Return to approval list with success
+            Navigator.of(context)
+                .pop(true); // Return to approval list with success
           },
         );
       } else {
@@ -75,7 +77,7 @@ class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
       }
     } catch (e) {
       print('Approval error: $e'); // Debug logging
-      
+
       // Show error bottom sheet
       await ApprovalResultBottomSheet.showError(
         context,
@@ -93,14 +95,14 @@ class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
       _showValidationError('Please add a comment before rejecting');
       return;
     }
-    
+
     try {
       final success = await context.read<ApprovalProvider>().rejectLeave(
-        leaveId: int.parse(widget.leaveRequest.leaveId),
-        comment: _commentController.text.trim(),
-        role: _currentRole,
-      );
-      
+            leaveId: int.parse(widget.leaveRequest.leaveId),
+            comment: _commentController.text.trim(),
+            role: _currentRole,
+          );
+
       if (success) {
         // Show success bottom sheet
         await ApprovalResultBottomSheet.showSuccess(
@@ -108,7 +110,8 @@ class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
           actionType: "reject",
           onDone: () {
             Navigator.of(context).pop(); // Close bottom sheet
-            Navigator.of(context).pop(true); // Return to approval list with success
+            Navigator.of(context)
+                .pop(true); // Return to approval list with success
           },
         );
       } else {
@@ -124,7 +127,7 @@ class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
       }
     } catch (e) {
       print('Rejection error: $e'); // Debug logging
-      
+
       // Show error bottom sheet
       await ApprovalResultBottomSheet.showError(
         context,
@@ -139,7 +142,7 @@ class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
 
   void _showValidationError(String message) {
     if (!mounted) return;
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
@@ -186,7 +189,7 @@ class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
           ),
         ),
         title: Text(
-          '${_currentRole.toString().toUpperCase()} Approval',
+          'Approval Form',
           style: PalmTextStyles.title.copyWith(
             color: PalmColors.primary,
             fontWeight: FontWeight.w600,
@@ -206,7 +209,7 @@ class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
             if (approvalProvider.isSubmittingAction) {
               return const LoadingWidget();
             }
-            
+
             return SingleChildScrollView(
               padding: const EdgeInsets.all(PalmSpacings.m),
               child: Column(
@@ -247,10 +250,18 @@ class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
             ),
           ),
           const SizedBox(height: PalmSpacings.m),
-          _buildInfoRow('Leave Type:', _capitalizeLeaveType(widget.leaveRequest.leaveType), Icons.category),
-          _buildInfoRow('Start Date:', _formatDate(widget.leaveRequest.startDate), Icons.calendar_today),
-          _buildInfoRow('End Date:', _formatDate(widget.leaveRequest.endDate), Icons.event),
-          _buildInfoRow('Total Days:', '${widget.leaveRequest.totalDays} day${int.parse(widget.leaveRequest.totalDays) > 1 ? 's' : ''}', Icons.today),
+          _buildInfoRow(
+              'Leave Type:',
+              _capitalizeLeaveType(widget.leaveRequest.leaveType),
+              Icons.category),
+          _buildInfoRow('Start Date:',
+              _formatDate(widget.leaveRequest.startDate), Icons.calendar_today),
+          _buildInfoRow('End Date:', _formatDate(widget.leaveRequest.endDate),
+              Icons.event),
+          _buildInfoRow(
+              'Total Days:',
+              '${widget.leaveRequest.totalDays} day${int.parse(widget.leaveRequest.totalDays) > 1 ? 's' : ''}',
+              Icons.today),
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 4.0),
             child: Row(
@@ -258,7 +269,8 @@ class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
               children: [
                 SizedBox(
                   width: 28, // Consistent icon width
-                  child: Icon(Icons.subject, color: PalmColors.primary, size: 20),
+                  child:
+                      Icon(Icons.subject, color: PalmColors.primary, size: 20),
                 ),
                 const SizedBox(width: 12),
                 SizedBox(
@@ -332,7 +344,8 @@ class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
               children: [
                 SizedBox(
                   width: 28, // Consistent icon width
-                  child: Icon(Icons.info_outline, color: PalmColors.primary, size: 20),
+                  child: Icon(Icons.info_outline,
+                      color: PalmColors.primary, size: 20),
                 ),
                 const SizedBox(width: 12),
                 SizedBox(
@@ -356,7 +369,8 @@ class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
               ],
             ),
           ),
-          if (_canViewSupervisorComments && widget.leaveRequest.supervisorComment != null) ...[
+          if (_canViewSupervisorComments &&
+              widget.leaveRequest.supervisorComment != null) ...[
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 4.0),
               child: Row(
@@ -364,13 +378,14 @@ class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
                 children: [
                   SizedBox(
                     width: 28, // Consistent icon width
-                    child: Icon(Icons.comment, color: PalmColors.warning, size: 20),
+                    child: Icon(Icons.comment,
+                        color: PalmColors.warning, size: 20),
                   ),
                   const SizedBox(width: 12),
                   SizedBox(
                     width: 85, // Consistent label width
                     child: Text(
-                      'Supervisor Comment:',
+                      '${_currentRole == ApprovalRole.manager ? 'Manager' : 'Supervisor'} Comment:',
                       style: PalmTextStyles.body.copyWith(
                         color: PalmColors.textLight,
                         fontWeight: FontWeight.w500,
@@ -395,10 +410,12 @@ class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
               ),
             ),
           ],
-          if (_canViewSupervisorComments && widget.leaveRequest.supervisorActionDate != null) ...[
+          if (_canViewSupervisorComments &&
+              widget.leaveRequest.supervisorActionDate != null) ...[
             _buildRequestInfoRow(
-              'Supervisor Action Date:',
-              _formatDate(widget.leaveRequest.supervisorActionDate!.split(' ')[0]),
+              '${_currentRole == ApprovalRole.manager ? 'Manager' : 'Supervisor'} Action Date:',
+              _formatDate(
+                  widget.leaveRequest.supervisorActionDate!.split(' ')[0]),
               Icons.schedule,
               iconColor: PalmColors.success,
             ),
@@ -444,7 +461,8 @@ class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
             ),
           ),
         ),
-        if (_canViewSupervisorComments && widget.leaveRequest.supervisorComment != null) ...[
+        if (_canViewSupervisorComments &&
+            widget.leaveRequest.supervisorComment != null) ...[
           const SizedBox(height: PalmSpacings.m),
           Text(
             'Previous Comments',
@@ -456,7 +474,7 @@ class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
           ),
           const SizedBox(height: PalmSpacings.s),
           _buildPreviousComment(
-            'Supervisor',
+            _currentRole == ApprovalRole.manager ? 'Manager' : 'Supervisor',
             widget.leaveRequest.supervisorComment!,
             widget.leaveRequest.supervisorActionDate!,
           ),
@@ -506,7 +524,7 @@ class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
 
   Widget _buildActionButtons(ApprovalProvider approvalProvider) {
     final isSubmitting = approvalProvider.isSubmittingAction;
-    
+
     return Row(
       children: [
         Expanded(
@@ -575,11 +593,13 @@ class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
     );
   }
 
-  Widget _buildInfoRow(String label, String value, IconData icon, {bool isReason = false}) {
+  Widget _buildInfoRow(String label, String value, IconData icon,
+      {bool isReason = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
-        crossAxisAlignment: isReason ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+        crossAxisAlignment:
+            isReason ? CrossAxisAlignment.start : CrossAxisAlignment.center,
         children: [
           SizedBox(
             width: 28, // Consistent icon width
@@ -692,17 +712,28 @@ class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
   }
 
   String _capitalizeLeaveType(String leaveType) {
-    return leaveType.split(' ')
-        .map((word) => word.isEmpty ? '' : word[0].toUpperCase() + word.substring(1).toLowerCase())
+    return leaveType
+        .split(' ')
+        .map((word) => word.isEmpty
+            ? ''
+            : word[0].toUpperCase() + word.substring(1).toLowerCase())
         .join(' ');
   }
 
   String _getStatusText() {
     switch (widget.leaveRequest.status.toLowerCase()) {
       case 'pending':
+        // Change UI text based on current role
+        if (_currentRole == ApprovalRole.supervisor) {
+          return 'Pending Manager Approval';
+        } else if (_currentRole == ApprovalRole.manager) {
+          return 'Pending Dept Approved';
+        }
         return 'Pending ${_currentRole.toString().toLowerCase()} approval';
       case 'supervisor_approved':
-        return 'Supervisor Approved';
+        return _currentRole == ApprovalRole.manager
+            ? 'Manager Approved'
+            : 'Supervisor Approved';
       case 'manager_approved':
         return 'Manager Approved';
       case 'approved':
@@ -764,11 +795,7 @@ class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
       ),
       decoration: BoxDecoration(
         color: statusColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: statusColor.withOpacity(0.3),
-          width: 1,
-        ),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

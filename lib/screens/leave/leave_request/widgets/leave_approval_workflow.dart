@@ -43,7 +43,7 @@ class LeaveApprovalWorkflow extends StatelessWidget {
 
           // Supervisor approval
           _buildApprovalField(
-            'Supervisor Review',
+            'Manager Review',
             supervisorName,
             'Will verify and certify your leave request',
             Icons.person_outline,
@@ -53,7 +53,7 @@ class LeaveApprovalWorkflow extends StatelessWidget {
 
           // Manager approval
           _buildApprovalField(
-            'Manager Approval',
+            'Head of Dept Approval',
             managerName,
             'Final approval and authorization',
             Icons.supervisor_account_outlined,

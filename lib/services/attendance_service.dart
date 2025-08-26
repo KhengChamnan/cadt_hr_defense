@@ -5,18 +5,27 @@ import '../providers/asyncvalue.dart';
 /// Service for processing attendance data and providing business logic
 /// related to attendance calculations and summaries
 class AttendanceService {
+  // Lunch break configuration (in minutes from midnight)
+  static const int lunchStartTime = 12 * 60; // 12:00 PM (720 minutes)
+  static const int lunchEndTime = 13 * 60; // 1:00 PM (780 minutes)
+  static const int lunchDurationMinutes = 60; // 1 hour lunch break
+
+  // Standard working hours configuration
+  static const int standardStartTime = 8 * 60; // 8:00 AM (480 minutes)
+  static const int onTimeGracePeriod = 5; // 5 minutes grace period
+  static const int lateThreshold =
+      standardStartTime + onTimeGracePeriod; // 8:05 AM (485 minutes)
   /// Calculates weekly attendance summary data for the WeeklySummaryCard
   /// for the current week
-  /// 
+  ///
   /// Returns a map containing:
   /// - totalHours: Total working hours for the week
   /// - attendanceRate: Attendance rate for the week (days present / workdays passed)
   /// - averageHours: Average working hours per day
   /// - absentHours: Hours marked as absent
-  static Map<String, String> getWeeklySummaryData(
-    AttendanceProvider provider,
-    {int attendanceType = 1} // Default to Normal attendance type
-  ) {
+  static Map<String, String> getWeeklySummaryData(AttendanceProvider provider,
+      {int attendanceType = 1} // Default to Normal attendance type
+      ) {
     // Default values in case of loading or error
     Map<String, String> defaultData = {
       'totalHours': '0h 0m',
@@ -25,45 +34,46 @@ class AttendanceService {
       'absentHours': '0h 0m',
       'weekendHolidayOT': '0h 0m',
     };
-    
+
     // Check if attendance data is available and loaded successfully
-    if (provider.attendanceList == null || 
-        provider.attendanceList!.state != AsyncValueState.success || 
+    if (provider.attendanceList == null ||
+        provider.attendanceList!.state != AsyncValueState.success ||
         provider.attendanceList!.data == null) {
       return defaultData;
     }
-    
+
     final attendanceList = provider.attendanceList!.data!;
-    
+
     // Filter attendance records for the current week
     final now = DateTime.now();
     final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
-    final startOfWeekDate = DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
-    
-    return _calculateWeeklySummary(attendanceList, startOfWeekDate, attendanceType: attendanceType);
+    final startOfWeekDate =
+        DateTime(startOfWeek.year, startOfWeek.month, startOfWeek.day);
+
+    return _calculateWeeklySummary(attendanceList, startOfWeekDate,
+        attendanceType: attendanceType);
   }
-  
+
   /// Calculates weekly attendance summary data for the WeeklySummaryCard
   /// based on the selected month and week number
-  /// 
+  ///
   /// Parameters:
   /// - provider: The attendance provider containing attendance data
   /// - monthName: The name of the month (e.g., 'January', 'February')
   /// - weekNumber: The week number in the month (1-5)
   /// - year: Optional year parameter, defaults to current year
-  /// 
+  ///
   /// Returns a map containing:
   /// - totalHours: Total working hours for the week
   /// - attendanceRate: Attendance rate for the week (days present / workdays passed)
   /// - averageHours: Average working hours per day
   /// - absentHours: Hours marked as absent
   static Map<String, String> getWeeklySummaryForSelectedWeek(
-    AttendanceProvider provider, 
-    String monthName, 
-    int weekNumber, 
-    int attendanceType, // Default to Normal attendance type
-    {int? year}
-  ) {
+      AttendanceProvider provider,
+      String monthName,
+      int weekNumber,
+      int attendanceType, // Default to Normal attendance type
+      {int? year}) {
     // Default values in case of loading or error
     Map<String, String> defaultData = {
       'totalHours': '0h 0m',
@@ -72,79 +82,82 @@ class AttendanceService {
       'absentHours': '0h 0m',
       'weekendHolidayOT': '0h 0m',
     };
-    
+
     // Check if attendance data is available and loaded successfully
-    if (provider.attendanceList == null || 
-        provider.attendanceList!.state != AsyncValueState.success || 
+    if (provider.attendanceList == null ||
+        provider.attendanceList!.state != AsyncValueState.success ||
         provider.attendanceList!.data == null) {
       return defaultData;
     }
-    
+
     final attendanceList = provider.attendanceList!.data!;
-    
+
     // Convert month name to month number
     int monthNumber = getMonthNumberFromName(monthName);
     if (monthNumber == -1) {
       return defaultData;
     }
-    
+
     // Use current year if not specified
     final currentYear = year ?? DateTime.now().year;
-    
+
     // Calculate the first day of the month
     final firstDayOfMonth = DateTime(currentYear, monthNumber, 1);
-    
+
     // Calculate the first day of the requested week
     // First, find the first Monday of the month
     int daysToAdd = (8 - firstDayOfMonth.weekday) % 7;
     final firstMondayOfMonth = firstDayOfMonth.add(Duration(days: daysToAdd));
-    
+
     // Then add (weekNumber - 1) * 7 days to get to the requested week
-    final startOfWeekDate = firstMondayOfMonth.add(Duration(days: (weekNumber - 1) * 7));
-    
-    return _calculateWeeklySummary(attendanceList, startOfWeekDate, attendanceType: attendanceType);
+    final startOfWeekDate =
+        firstMondayOfMonth.add(Duration(days: (weekNumber - 1) * 7));
+
+    return _calculateWeeklySummary(attendanceList, startOfWeekDate,
+        attendanceType: attendanceType);
   }
-  
+
   /// Helper method to calculate weekly summary based on a start date
   static Map<String, String> _calculateWeeklySummary(
-    List<Attendance> attendanceList,
-    DateTime startOfWeekDate,
-    {int attendanceType = 1} // Default to Normal attendance type
-  ) {
+      List<Attendance> attendanceList, DateTime startOfWeekDate,
+      {int attendanceType = 1} // Default to Normal attendance type
+      ) {
     // End of the week (Sunday)
     final endOfWeekDate = startOfWeekDate.add(const Duration(days: 6));
     final now = DateTime.now();
-    
+
     // Filter by date range and attendance type
     final weeklyAttendance = attendanceList.where((attendance) {
       if (attendance.attendanceDate == null) return false;
-      
+
       // Filter by attendance type first
       if (attendance.workTypeId != attendanceType) return false;
-      
+
       final attendanceDateTime = DateTime.tryParse(attendance.attendanceDate!);
       if (attendanceDateTime == null) return false;
-      
-      return (attendanceDateTime.isAfter(startOfWeekDate) || 
-             attendanceDateTime.isAtSameMomentAs(startOfWeekDate)) &&
-             (attendanceDateTime.isBefore(endOfWeekDate) || 
-             attendanceDateTime.isAtSameMomentAs(endOfWeekDate));
+
+      return (attendanceDateTime.isAfter(startOfWeekDate) ||
+              attendanceDateTime.isAtSameMomentAs(startOfWeekDate)) &&
+          (attendanceDateTime.isBefore(endOfWeekDate) ||
+              attendanceDateTime.isAtSameMomentAs(endOfWeekDate));
     }).toList();
-    
+
     // Calculate total working hours for the week
     int totalMinutes = _calculateTotalWorkingMinutes(weeklyAttendance);
-    
+
     // Calculate weekend/holiday overtime hours for overtime type
     int weekendHolidayMinutes = 0;
-    if (attendanceType == 2) { // Overtime type
-      weekendHolidayMinutes = _calculateWeekendHolidayMinutes(weeklyAttendance, startOfWeekDate);
+    if (attendanceType == 2) {
+      // Overtime type
+      weekendHolidayMinutes =
+          _calculateWeekendHolidayMinutes(weeklyAttendance, startOfWeekDate);
     }
-    
+
     // Calculate standard work week (40 hours = 2400 minutes)
-    
+
     // Calculate average working hours per day (assuming 5 working days)
     int avgMinutesPerDay = weeklyAttendance.isEmpty ? 0 : totalMinutes ~/ 5;
-    
+
     // Calculate absent hours and attendance rate
     // Count days with no attendance records as absent
     Set<String> daysWithAttendance = {};
@@ -153,38 +166,41 @@ class AttendanceService {
         daysWithAttendance.add(attendance.attendanceDate!);
       }
     }
-    
+
     // Count workdays (Mon-Fri) in the week that have passed
     int workdaysPassed = 0;
-    for (int i = 0; i < 5; i++) {  // Monday to Friday
+    for (int i = 0; i < 5; i++) {
+      // Monday to Friday
       final day = startOfWeekDate.add(Duration(days: i));
       // Only count days that are in the past (not including today)
       if (day.isBefore(DateTime(now.year, now.month, now.day))) {
         workdaysPassed++;
       }
     }
-    
+
     // Calculate absent days by checking which past workdays have no attendance
     int absentDays = 0;
-    for (int i = 0; i < 5; i++) {  // Monday to Friday
+    for (int i = 0; i < 5; i++) {
+      // Monday to Friday
       final day = startOfWeekDate.add(Duration(days: i));
       // Only consider days up to yesterday (not including today or future days)
       if (day.isBefore(DateTime(now.year, now.month, now.day))) {
         // Format date as yyyy-MM-dd to match the format in attendance records
-        final dayString = "${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}";
+        final dayString =
+            "${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}";
         if (!daysWithAttendance.contains(dayString)) {
           absentDays++;
         }
       }
     }
-    
+
     int absentMinutes = absentDays * 8 * 60; // 8 hours per day
-    
+
     // Calculate attendance rate
-    String attendanceRate = workdaysPassed > 0 
+    String attendanceRate = workdaysPassed > 0
         ? "${workdaysPassed - absentDays}/$workdaysPassed"
         : "0/0";
-    
+
     // Format the results as strings in the format "XXh YYm"
     return {
       'totalHours': _formatMinutes(totalMinutes),
@@ -194,7 +210,7 @@ class AttendanceService {
       'weekendHolidayOT': _formatMinutes(weekendHolidayMinutes),
     };
   }
-  
+
   /// Helper method to convert month name to month number
   static int getMonthNumberFromName(String monthName) {
     final months = {
@@ -211,10 +227,10 @@ class AttendanceService {
       'November': 11,
       'December': 12,
     };
-    
+
     return months[monthName] ?? -1;
   }
-  
+
   /// Helper method to get day name from weekday number (1-7, where 1 is Monday)
   static String getDayName(int weekday) {
     final days = {
@@ -226,15 +242,15 @@ class AttendanceService {
       6: 'Saturday',
       7: 'Sunday',
     };
-    
+
     return days[weekday] ?? 'Unknown';
   }
-  
+
   /// Calculates the total working minutes from a list of attendance records
   static int _calculateTotalWorkingMinutes(List<Attendance> attendanceList) {
     // Group attendance records by date
     Map<String, List<Attendance>> attendanceByDate = {};
-    
+
     for (var attendance in attendanceList) {
       if (attendance.attendanceDate != null) {
         if (!attendanceByDate.containsKey(attendance.attendanceDate)) {
@@ -243,9 +259,9 @@ class AttendanceService {
         attendanceByDate[attendance.attendanceDate!]!.add(attendance);
       }
     }
-    
+
     int totalMinutes = 0;
-    
+
     // For each day, calculate working time based on first check-in and last check-out
     attendanceByDate.forEach((date, records) {
       // Sort records by time
@@ -253,7 +269,7 @@ class AttendanceService {
         if (a.attendanceTime == null || b.attendanceTime == null) return 0;
         return a.attendanceTime!.compareTo(b.attendanceTime!);
       });
-      
+
       // Find first check-in
       Attendance? firstCheckIn;
       for (var record in records) {
@@ -262,7 +278,7 @@ class AttendanceService {
           break;
         }
       }
-      
+
       // Find last check-out
       Attendance? lastCheckOut;
       for (var i = records.length - 1; i >= 0; i--) {
@@ -271,26 +287,29 @@ class AttendanceService {
           break;
         }
       }
-      
+
       // Calculate working minutes if both check-in and check-out exist
       if (firstCheckIn != null && lastCheckOut != null) {
         final checkInTime = _parseTimeToMinutes(firstCheckIn.attendanceTime);
         final checkOutTime = _parseTimeToMinutes(lastCheckOut.attendanceTime);
-        
+
         if (checkInTime != null && checkOutTime != null) {
-          totalMinutes += checkOutTime - checkInTime;
+          // Use lunch break deduction method
+          totalMinutes += _calculateWorkingMinutesWithLunchDeduction(
+              checkInTime, checkOutTime);
         }
       }
     });
-    
+
     return totalMinutes;
   }
-  
+
   /// Calculates weekend and holiday overtime minutes from a list of attendance records
-  static int _calculateWeekendHolidayMinutes(List<Attendance> attendanceList, DateTime weekStartDate) {
+  static int _calculateWeekendHolidayMinutes(
+      List<Attendance> attendanceList, DateTime weekStartDate) {
     // Group attendance records by date
     Map<String, List<Attendance>> attendanceByDate = {};
-    
+
     for (var attendance in attendanceList) {
       if (attendance.attendanceDate != null) {
         if (!attendanceByDate.containsKey(attendance.attendanceDate)) {
@@ -299,9 +318,9 @@ class AttendanceService {
         attendanceByDate[attendance.attendanceDate!]!.add(attendance);
       }
     }
-    
+
     int weekendHolidayMinutes = 0;
-    
+
     // For each day, check if it's weekend and calculate working time
     attendanceByDate.forEach((date, records) {
       final workDate = DateTime.tryParse(date);
@@ -310,14 +329,14 @@ class AttendanceService {
         bool isWeekend = workDate.weekday == 6 || workDate.weekday == 7;
         // TODO: Add holiday detection here when you have holiday data
         bool isHoliday = false; // Placeholder for holiday detection
-        
+
         if (isWeekend || isHoliday) {
           // Sort records by time
           records.sort((a, b) {
             if (a.attendanceTime == null || b.attendanceTime == null) return 0;
             return a.attendanceTime!.compareTo(b.attendanceTime!);
           });
-          
+
           // Find first check-in
           Attendance? firstCheckIn;
           for (var record in records) {
@@ -326,7 +345,7 @@ class AttendanceService {
               break;
             }
           }
-          
+
           // Find last check-out
           Attendance? lastCheckOut;
           for (var i = records.length - 1; i >= 0; i--) {
@@ -335,30 +354,35 @@ class AttendanceService {
               break;
             }
           }
-          
+
           // Calculate working minutes if both check-in and check-out exist
           if (firstCheckIn != null && lastCheckOut != null) {
-            final checkInTime = _parseTimeToMinutes(firstCheckIn.attendanceTime);
-            final checkOutTime = _parseTimeToMinutes(lastCheckOut.attendanceTime);
-            
+            final checkInTime =
+                _parseTimeToMinutes(firstCheckIn.attendanceTime);
+            final checkOutTime =
+                _parseTimeToMinutes(lastCheckOut.attendanceTime);
+
             if (checkInTime != null && checkOutTime != null) {
-              weekendHolidayMinutes += checkOutTime - checkInTime;
+              // Use lunch break deduction method for weekend/holiday overtime
+              weekendHolidayMinutes +=
+                  _calculateWorkingMinutesWithLunchDeduction(
+                      checkInTime, checkOutTime);
             }
           }
         }
       }
     });
-    
+
     return weekendHolidayMinutes;
   }
-  
+
   /// Parses a time string (HH:MM) to minutes since midnight
   static int? _parseTimeToMinutes(String? timeString) {
     if (timeString == null) return null;
-    
+
     final parts = timeString.split(':');
     if (parts.length < 2) return null;
-    
+
     try {
       int hours = int.parse(parts[0]);
       int minutes = int.parse(parts[1]);
@@ -367,54 +391,88 @@ class AttendanceService {
       return null;
     }
   }
-  
+
+  /// Calculates working minutes between check-in and check-out with lunch break deduction
+  ///
+  /// Parameters:
+  /// - checkInTime: Check-in time in minutes from midnight
+  /// - checkOutTime: Check-out time in minutes from midnight
+  ///
+  /// Returns: Working minutes with lunch break automatically deducted if applicable
+  static int _calculateWorkingMinutesWithLunchDeduction(
+      int checkInTime, int checkOutTime) {
+    if (checkInTime >= checkOutTime) return 0;
+
+    int totalMinutes = checkOutTime - checkInTime;
+
+    // Check if work period spans lunch time (12:00 PM - 1:00 PM)
+    bool spansLunchTime =
+        checkInTime < lunchEndTime && checkOutTime > lunchStartTime;
+
+    if (spansLunchTime) {
+      // Calculate how much of the lunch break overlaps with work time
+      int lunchOverlapStart =
+          checkInTime > lunchStartTime ? checkInTime : lunchStartTime;
+      int lunchOverlapEnd =
+          checkOutTime < lunchEndTime ? checkOutTime : lunchEndTime;
+      int lunchOverlapMinutes = lunchOverlapEnd - lunchOverlapStart;
+
+      // Deduct the lunch break overlap (max 60 minutes)
+      totalMinutes -= lunchOverlapMinutes.clamp(0, lunchDurationMinutes);
+    }
+
+    return totalMinutes;
+  }
+
   /// Formats minutes as "XXh YYm"
   static String _formatMinutes(int minutes) {
     int hours = minutes ~/ 60;
     int mins = minutes % 60;
     return '${hours}h ${mins}m';
   }
-  
+
   /// Calculates attendance data for weekly attendance cards
   /// Returns a list of maps containing data for each day of the week
-  /// 
+  ///
   /// Parameters:
   /// - provider: The attendance provider containing attendance data
   /// - weekStartDate: The start date of the week
   /// - attendanceType: Type of attendance (1: Normal, 2: Overtime, 3: Part Time)
   static List<Map<String, String?>> getWeeklyAttendanceCardData(
-    AttendanceProvider provider,
-    DateTime weekStartDate,
-    {int attendanceType = 1} // Default to Normal attendance type
-  ) {
+      AttendanceProvider provider, DateTime weekStartDate,
+      {int attendanceType = 1} // Default to Normal attendance type
+      ) {
     // Check if attendance data is available and loaded successfully
-    if (provider.attendanceList == null || 
-        provider.attendanceList!.state != AsyncValueState.success || 
+    if (provider.attendanceList == null ||
+        provider.attendanceList!.state != AsyncValueState.success ||
         provider.attendanceList!.data == null) {
       return _generateEmptyWeekData(weekStartDate);
     }
-    
+
     final attendanceList = provider.attendanceList!.data!;
     final now = DateTime.now();
-    
+
     // Initialize result list for 7 days of the week
     List<Map<String, String?>> weekData = [];
-    
+
     // Process each day of the week
     for (int i = 0; i < 7; i++) {
       final currentDate = weekStartDate.add(Duration(days: i));
-      final dateString = "${currentDate.year}-${currentDate.month.toString().padLeft(2, '0')}-${currentDate.day.toString().padLeft(2, '0')}";
-      final formattedDate = "${currentDate.day.toString().padLeft(2, '0')}/${currentDate.month.toString().padLeft(2, '0')}/${currentDate.year}";
-      
+      final dateString =
+          "${currentDate.year}-${currentDate.month.toString().padLeft(2, '0')}-${currentDate.day.toString().padLeft(2, '0')}";
+      final formattedDate =
+          "${currentDate.day.toString().padLeft(2, '0')}/${currentDate.month.toString().padLeft(2, '0')}/${currentDate.year}";
+
       // Get day name (Mon, Tue, etc.)
       final dayName = getDayName(currentDate.weekday);
-      
+
       // Filter attendance records for this day and by attendance type
-      final dayAttendance = attendanceList.where((attendance) => 
-        attendance.attendanceDate == dateString && 
-        attendance.workTypeId == attendanceType
-      ).toList();
-      
+      final dayAttendance = attendanceList
+          .where((attendance) =>
+              attendance.attendanceDate == dateString &&
+              attendance.workTypeId == attendanceType)
+          .toList();
+
       if (dayAttendance.isEmpty) {
         // No attendance records for this day
         Map<String, String?> dayData = {
@@ -423,21 +481,22 @@ class AttendanceService {
           'checkInTime': null,
           'checkOutTime': null,
           'totalHours': currentDate.weekday > 5 ? 'Off' : '0h 0m',
-          'status': currentDate.weekday > 5 ? 'Day off' : 
-                    (currentDate.isAfter(now) ? 'Upcoming' : 'Absent'),
+          'status': currentDate.weekday > 5
+              ? 'Day off'
+              : (currentDate.isAfter(now) ? 'Upcoming' : 'Absent'),
         };
         weekData.add(dayData);
       } else {
         // Find first check-in and last check-out
         Attendance? firstCheckIn;
         Attendance? lastCheckOut;
-        
+
         // Sort records by time
         dayAttendance.sort((a, b) {
           if (a.attendanceTime == null || b.attendanceTime == null) return 0;
           return a.attendanceTime!.compareTo(b.attendanceTime!);
         });
-        
+
         // Find first check-in
         for (var record in dayAttendance) {
           if (record.inOut == 'in') {
@@ -445,7 +504,7 @@ class AttendanceService {
             break;
           }
         }
-        
+
         // Find last check-out
         for (var i = dayAttendance.length - 1; i >= 0; i--) {
           if (dayAttendance[i].inOut == 'out') {
@@ -453,38 +512,44 @@ class AttendanceService {
             break;
           }
         }
-        
+
         // Calculate working time
         int workingMinutes = 0;
         if (firstCheckIn != null && lastCheckOut != null) {
           final checkInTime = _parseTimeToMinutes(firstCheckIn.attendanceTime);
           final checkOutTime = _parseTimeToMinutes(lastCheckOut.attendanceTime);
-          
+
           if (checkInTime != null && checkOutTime != null) {
-            workingMinutes = checkOutTime - checkInTime;
+            // Use lunch break deduction method
+            workingMinutes = _calculateWorkingMinutesWithLunchDeduction(
+                checkInTime, checkOutTime);
           }
         }
-        
+
         // Determine status based on check-in time
         String status = 'Present';
         if (firstCheckIn != null && firstCheckIn.attendanceTime != null) {
           final checkInTime = _parseTimeToMinutes(firstCheckIn.attendanceTime);
           if (checkInTime != null) {
-            // Assuming standard work hours start at 8:00 AM (480 minutes)
-            if (checkInTime <= 480) {
+            // Standard working hours: 8:00-8:05 AM is On Time, after 8:05 AM is Late
+            if (checkInTime < standardStartTime) {
+              status = 'Early';
+            } else if (checkInTime <= lateThreshold) {
               status = 'On Time';
             } else {
               status = 'Late';
             }
           }
         }
-        
+
         // Format check-in and check-out times for display
-        String? formattedCheckIn = firstCheckIn?.attendanceTime != null ? 
-                                 _formatTimeForDisplay(firstCheckIn!.attendanceTime!) : null;
-        String? formattedCheckOut = lastCheckOut?.attendanceTime != null ? 
-                                  _formatTimeForDisplay(lastCheckOut!.attendanceTime!) : null;
-        
+        String? formattedCheckIn = firstCheckIn?.attendanceTime != null
+            ? _formatTimeForDisplay(firstCheckIn!.attendanceTime!)
+            : null;
+        String? formattedCheckOut = lastCheckOut?.attendanceTime != null
+            ? _formatTimeForDisplay(lastCheckOut!.attendanceTime!)
+            : null;
+
         Map<String, String?> dayData = {
           'day': dayName,
           'date': formattedDate,
@@ -496,18 +561,20 @@ class AttendanceService {
         weekData.add(dayData);
       }
     }
-    
+
     return weekData;
   }
-  
+
   /// Helper method to generate empty week data when no attendance data is available
-  static List<Map<String, String?>> _generateEmptyWeekData(DateTime weekStartDate) {
+  static List<Map<String, String?>> _generateEmptyWeekData(
+      DateTime weekStartDate) {
     List<Map<String, String?>> emptyWeek = [];
-    
+
     for (int i = 0; i < 7; i++) {
       final currentDate = weekStartDate.add(Duration(days: i));
-      final formattedDate = "${currentDate.day.toString().padLeft(2, '0')}/${currentDate.month.toString().padLeft(2, '0')}/${currentDate.year}";
-      
+      final formattedDate =
+          "${currentDate.day.toString().padLeft(2, '0')}/${currentDate.month.toString().padLeft(2, '0')}/${currentDate.year}";
+
       emptyWeek.add({
         'day': getDayName(currentDate.weekday),
         'date': formattedDate,
@@ -517,48 +584,48 @@ class AttendanceService {
         'status': currentDate.weekday > 5 ? 'Day off' : 'Upcoming',
       });
     }
-    
+
     return emptyWeek;
   }
-  
+
   /// Helper method to format time string for display (HH:MM AM/PM)
   static String _formatTimeForDisplay(String timeString) {
     final parts = timeString.split(':');
     if (parts.length < 2) return timeString;
-    
+
     try {
       int hours = int.parse(parts[0]);
       int minutes = int.parse(parts[1]);
-      
+
       String period = hours >= 12 ? 'PM' : 'AM';
       hours = hours % 12;
       if (hours == 0) hours = 12;
-      
+
       return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')} $period';
     } catch (e) {
       return timeString;
     }
   }
-  
+
   /// Calculates monthly report data for charts
-  /// 
+  ///
   /// Returns a list of five lists containing:
   /// - Working hours data for each month
   /// - Late hours data for each month
   /// - Absent hours data for each month
   /// - Early hours data for each month
   /// - On-time hours data for each month
-  static List<List<double>> getMonthlyReportData(AttendanceProvider provider, {int attendanceType = 1, int? year}) {
+  static List<List<double>> getMonthlyReportData(AttendanceProvider provider,
+      {int attendanceType = 1, int? year}) {
     // Get current year if not specified
     final int selectedYear = year ?? DateTime.now().year;
     final now = DateTime.now();
-    
+
     // Check if attendance data is available and loaded successfully
-    if (provider.attendanceList == null || 
-        provider.attendanceList!.state != AsyncValueState.success || 
-        provider.attendanceList!.data == null || 
+    if (provider.attendanceList == null ||
+        provider.attendanceList!.state != AsyncValueState.success ||
+        provider.attendanceList!.data == null ||
         provider.attendanceList!.data!.isEmpty) {
-      
       // Return zeros when no data is available
       return [
         // Working hours data (zeros)
@@ -573,9 +640,9 @@ class AttendanceService {
         List.filled(12, 0.0),
       ];
     }
-    
+
     final attendanceList = provider.attendanceList!.data!;
-    
+
     // Skip future years completely
     if (selectedYear > now.year) {
       return [
@@ -586,7 +653,7 @@ class AttendanceService {
         List.filled(12, 0.0),
       ];
     }
-      // Initialize result arrays
+    // Initialize result arrays
     List<double> workingHours = List.filled(12, 0.0);
     List<double> absentHours = List.filled(12, 0.0);
     List<double> weekendWorkHours = List.filled(12, 0.0);
@@ -595,7 +662,8 @@ class AttendanceService {
     // Group attendance records by month and filter by attendance type
     Map<int, List<Attendance>> attendanceByMonth = {};
     for (var attendance in attendanceList) {
-      if (attendance.attendanceDate != null && attendance.workTypeId == attendanceType) {
+      if (attendance.attendanceDate != null &&
+          attendance.workTypeId == attendanceType) {
         final attendanceDate = DateTime.tryParse(attendance.attendanceDate!);
         if (attendanceDate != null && attendanceDate.year == selectedYear) {
           int month = attendanceDate.month - 1; // 0-based index for months
@@ -636,10 +704,10 @@ class AttendanceService {
       if (selectedYear == now.year && month > now.month - 1) {
         continue;
       }
-      
+
       if (attendanceByMonth.containsKey(month)) {
         final monthAttendance = attendanceByMonth[month]!;
-        
+
         // Group attendance records by date
         Map<String, List<Attendance>> attendanceByDate = {};
         for (var attendance in monthAttendance) {
@@ -650,11 +718,11 @@ class AttendanceService {
             attendanceByDate[attendance.attendanceDate!]!.add(attendance);
           }
         }
-        
+
         int totalMinutes = 0;
         int weekendMinutes = 0;
         int holidayMinutes = 0;
-        
+
         // For each day, calculate working time based on first check-in and last check-out
         attendanceByDate.forEach((date, records) {
           // Sort records by time
@@ -662,7 +730,7 @@ class AttendanceService {
             if (a.attendanceTime == null || b.attendanceTime == null) return 0;
             return a.attendanceTime!.compareTo(b.attendanceTime!);
           });
-          
+
           // Find first check-in
           Attendance? firstCheckIn;
           for (var record in records) {
@@ -671,7 +739,7 @@ class AttendanceService {
               break;
             }
           }
-          
+
           // Find last check-out
           Attendance? lastCheckOut;
           for (var i = records.length - 1; i >= 0; i--) {
@@ -680,22 +748,27 @@ class AttendanceService {
               break;
             }
           }
-          
+
           // Calculate working minutes if both check-in and check-out exist
           if (firstCheckIn != null && lastCheckOut != null) {
-            final checkInTime = _parseTimeToMinutes(firstCheckIn.attendanceTime);
-            final checkOutTime = _parseTimeToMinutes(lastCheckOut.attendanceTime);
-            
+            final checkInTime =
+                _parseTimeToMinutes(firstCheckIn.attendanceTime);
+            final checkOutTime =
+                _parseTimeToMinutes(lastCheckOut.attendanceTime);
+
             if (checkInTime != null && checkOutTime != null) {
-              int dailyMinutes = checkOutTime - checkInTime;
+              // Use lunch break deduction method
+              int dailyMinutes = _calculateWorkingMinutesWithLunchDeduction(
+                  checkInTime, checkOutTime);
               totalMinutes += dailyMinutes;
-              
+
               // Check if it's weekend or holiday work (for overtime type)
-              if (attendanceType == 2) { // Overtime type
+              if (attendanceType == 2) {
+                // Overtime type
                 final workDate = DateTime.tryParse(date);
                 if (workDate != null) {
                   if (workDate.weekday == 6 || workDate.weekday == 7) {
-                    // Weekend work
+                    // Weekend work (with lunch deduction already applied)
                     weekendMinutes += dailyMinutes;
                   }
                   // Note: Holiday detection would require a holiday list
@@ -706,12 +779,13 @@ class AttendanceService {
             }
           }
         });
-        
+
         // Calculate absent days and hours for this month (only for normal attendance)
-        if (attendanceType == 1) { // Normal attendance type
+        if (attendanceType == 1) {
+          // Normal attendance type
           final actualMonth = month + 1; // Adjust for 0-based indexing
           final daysInMonth = DateTime(selectedYear, actualMonth + 1, 0).day;
-          
+
           // Create a Set of dates with attendance records for this attendance type
           Set<String> daysWithAttendance = {};
           for (var attendance in monthAttendance) {
@@ -719,25 +793,27 @@ class AttendanceService {
               daysWithAttendance.add(attendance.attendanceDate!);
             }
           }
-          
+
           // Count workdays (Mon-Fri) in the month that have passed
           int absentDays = 0;
           for (int day = 1; day <= daysInMonth; day++) {
             final date = DateTime(selectedYear, actualMonth, day);
-            
+
             // Only count weekdays (Mon-Fri) that are in the past (not including today)
-            if (date.weekday <= 5 && date.isBefore(DateTime(now.year, now.month, now.day))) {
+            if (date.weekday <= 5 &&
+                date.isBefore(DateTime(now.year, now.month, now.day))) {
               // Format date as yyyy-MM-dd to match attendance records
-              final dayString = "${selectedYear}-${actualMonth.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}";
+              final dayString =
+                  "${selectedYear}-${actualMonth.toString().padLeft(2, '0')}-${day.toString().padLeft(2, '0')}";
               if (!daysWithAttendance.contains(dayString)) {
                 absentDays++;
               }
             }
           }
-          
+
           absentHours[month] = absentDays * 8.0; // 8 hours per absent day
         }
-        
+
         // Convert to hours
         workingHours[month] = totalMinutes / 60;
         weekendWorkHours[month] = weekendMinutes / 60;
@@ -748,10 +824,13 @@ class AttendanceService {
     // Return data based on attendance type
     if (attendanceType == 1) {
       // Normal attendance: return working hours, late hours, absent hours, early hours, on-time hours
-      List<double> lateHours = getMonthlyLateHours(provider, selectedYear, attendanceType: attendanceType);
-      List<double> earlyHours = getMonthlyEarlyHours(provider, selectedYear, attendanceType: attendanceType);
-      List<double> onTimeHours = getMonthlyOnTimeHours(provider, selectedYear, attendanceType: attendanceType);
-      
+      List<double> lateHours = getMonthlyLateHours(provider, selectedYear,
+          attendanceType: attendanceType);
+      List<double> earlyHours = getMonthlyEarlyHours(provider, selectedYear,
+          attendanceType: attendanceType);
+      List<double> onTimeHours = getMonthlyOnTimeHours(provider, selectedYear,
+          attendanceType: attendanceType);
+
       return [workingHours, lateHours, absentHours, earlyHours, onTimeHours];
     } else if (attendanceType == 2) {
       // Overtime: return total working hours, weekend work hours, holiday work hours
@@ -761,9 +840,9 @@ class AttendanceService {
       return [workingHours];
     }
   }
-  
+
   /// Calculates yearly report data for charts
-  /// 
+  ///
   /// Returns a list of lists containing:
   /// - Working hours data for each year
   /// - Late hours data for each year (for normal attendance)
@@ -772,10 +851,11 @@ class AttendanceService {
   /// - On-time hours data for each year (for normal attendance)
   /// - Weekend work hours data for each year (for overtime attendance)
   /// - Holiday work hours data for each year (for overtime attendance)
-  static List<List<double>> getYearlyReportData(AttendanceProvider provider, {int attendanceType = 1, required List<int> yearRangeList}) {
+  static List<List<double>> getYearlyReportData(AttendanceProvider provider,
+      {int attendanceType = 1, required List<int> yearRangeList}) {
     // Check if attendance data is available and loaded successfully
-    if (provider.attendanceList == null || 
-        provider.attendanceList!.state != AsyncValueState.success || 
+    if (provider.attendanceList == null ||
+        provider.attendanceList!.state != AsyncValueState.success ||
         provider.attendanceList!.data == null) {
       // Return appropriate empty data based on attendance type
       if (attendanceType == 1) {
@@ -794,11 +874,12 @@ class AttendanceService {
         ];
       } else {
         return [
-          List.filled(yearRangeList.length, 0.0), // Working hours only for part-time
+          List.filled(
+              yearRangeList.length, 0.0), // Working hours only for part-time
         ];
       }
     }
-    
+
     // Initialize result arrays based on attendance type
     List<double> workingHours = List.filled(yearRangeList.length, 0.0);
     List<double> lateHours = List.filled(yearRangeList.length, 0.0);
@@ -807,33 +888,40 @@ class AttendanceService {
     List<double> onTimeHours = List.filled(yearRangeList.length, 0.0);
     List<double> weekendWorkHours = List.filled(yearRangeList.length, 0.0);
     List<double> holidayWorkHours = List.filled(yearRangeList.length, 0.0);
-    
+
     // Calculate data for each year in the range
     for (int i = 0; i < yearRangeList.length; i++) {
       final year = yearRangeList[i];
-      
+
       // Get monthly report data for this year
-      final monthlyData = getMonthlyReportData(provider, attendanceType: attendanceType, year: year);
-      
+      final monthlyData = getMonthlyReportData(provider,
+          attendanceType: attendanceType, year: year);
+
       if (monthlyData.isNotEmpty) {
         // Sum up all monthly data to get yearly totals
         workingHours[i] = monthlyData[0].reduce((a, b) => a + b);
-        
+
         if (attendanceType == 1) {
           // Normal attendance: include late, absent, early, on-time hours
-          if (monthlyData.length > 1) lateHours[i] = monthlyData[1].reduce((a, b) => a + b);
-          if (monthlyData.length > 2) absentHours[i] = monthlyData[2].reduce((a, b) => a + b);
-          if (monthlyData.length > 3) earlyHours[i] = monthlyData[3].reduce((a, b) => a + b);
-          if (monthlyData.length > 4) onTimeHours[i] = monthlyData[4].reduce((a, b) => a + b);
+          if (monthlyData.length > 1)
+            lateHours[i] = monthlyData[1].reduce((a, b) => a + b);
+          if (monthlyData.length > 2)
+            absentHours[i] = monthlyData[2].reduce((a, b) => a + b);
+          if (monthlyData.length > 3)
+            earlyHours[i] = monthlyData[3].reduce((a, b) => a + b);
+          if (monthlyData.length > 4)
+            onTimeHours[i] = monthlyData[4].reduce((a, b) => a + b);
         } else if (attendanceType == 2) {
           // Overtime attendance: include weekend and holiday work hours
-          if (monthlyData.length > 1) weekendWorkHours[i] = monthlyData[1].reduce((a, b) => a + b);
-          if (monthlyData.length > 2) holidayWorkHours[i] = monthlyData[2].reduce((a, b) => a + b);
+          if (monthlyData.length > 1)
+            weekendWorkHours[i] = monthlyData[1].reduce((a, b) => a + b);
+          if (monthlyData.length > 2)
+            holidayWorkHours[i] = monthlyData[2].reduce((a, b) => a + b);
         }
         // Part-time (attendanceType == 3) only has working hours
       }
     }
-    
+
     // Return data based on attendance type
     if (attendanceType == 1) {
       return [workingHours, lateHours, absentHours, earlyHours, onTimeHours];
@@ -843,46 +931,48 @@ class AttendanceService {
       return [workingHours];
     }
   }
-  
+
   /// Calculates late hours for a given month and year
   /// Late hours are calculated as the difference between standard start time (8:00 AM)
   /// and the actual first check-in time for each day
-  /// 
+  ///
   /// Parameters:
   /// - provider: The attendance provider containing attendance data
   /// - month: The month number (1-12)
   /// - year: The year
   /// - attendanceType: Type of attendance to filter by
-  /// 
+  ///
   /// Returns the total late hours for the specified month and year in hours (as double)
-  static double calculateLateHours(AttendanceProvider provider, int month, int year, {int attendanceType = 1}) {
+  static double calculateLateHours(
+      AttendanceProvider provider, int month, int year,
+      {int attendanceType = 1}) {
     // Check if attendance data is available and loaded successfully
-    if (provider.attendanceList == null || 
-        provider.attendanceList!.state != AsyncValueState.success || 
+    if (provider.attendanceList == null ||
+        provider.attendanceList!.state != AsyncValueState.success ||
         provider.attendanceList!.data == null) {
       return 0.0;
     }
-    
+
     final attendanceList = provider.attendanceList!.data!;
-    
+
     // Filter attendance records for the specified month, year and attendance type
     final monthAttendance = attendanceList.where((attendance) {
       if (attendance.attendanceDate == null) return false;
       if (attendance.workTypeId != attendanceType) return false;
-      
+
       final attendanceDate = DateTime.tryParse(attendance.attendanceDate!);
       if (attendanceDate == null) return false;
-      
+
       return attendanceDate.year == year && attendanceDate.month == month;
     }).toList();
-    
+
     if (monthAttendance.isEmpty) {
       return 0.0;
     }
-    
+
     // Group attendance records by date
     Map<String, List<Attendance>> attendanceByDate = {};
-    
+
     for (var attendance in monthAttendance) {
       if (attendance.attendanceDate != null) {
         if (!attendanceByDate.containsKey(attendance.attendanceDate)) {
@@ -891,20 +981,17 @@ class AttendanceService {
         attendanceByDate[attendance.attendanceDate!]!.add(attendance);
       }
     }
-    
+
     int totalLateMinutes = 0;
-    
-    // Standard start time: 8:00 AM = 480 minutes
-    const int standardStartTimeInMinutes = 8 * 60; // 480 minutes
-    
-    // Calculate late minutes for each day
+
+    // Calculate late minutes for each day (late = after 8:05 AM grace period)
     attendanceByDate.forEach((date, records) {
       // Sort records by time
       records.sort((a, b) {
         if (a.attendanceTime == null || b.attendanceTime == null) return 0;
         return a.attendanceTime!.compareTo(b.attendanceTime!);
       });
-      
+
       // Find first check-in
       Attendance? firstCheckIn;
       for (var record in records) {
@@ -913,80 +1000,84 @@ class AttendanceService {
           break;
         }
       }
-      
-      // Calculate late minutes if first check-in exists
+
+      // Calculate late minutes if first check-in exists and is after 8:05 AM
       if (firstCheckIn != null && firstCheckIn.attendanceTime != null) {
         final checkInTime = _parseTimeToMinutes(firstCheckIn.attendanceTime);
-        
-        if (checkInTime != null && checkInTime > standardStartTimeInMinutes) {
-          // Calculate how many minutes late (check-in time minus standard start time)
-          int lateMinutes = checkInTime - standardStartTimeInMinutes;
+
+        if (checkInTime != null && checkInTime > lateThreshold) {
+          // Calculate how many minutes late (check-in time minus 8:05 AM threshold)
+          int lateMinutes = checkInTime - lateThreshold;
           totalLateMinutes += lateMinutes;
         }
       }
     });
-    
+
     // Convert minutes to hours
     return totalLateMinutes / 60.0;
   }
-  
+
   /// Calculates total late hours for each month of a specific year
-  /// 
+  ///
   /// Parameters:
   /// - provider: The attendance provider containing attendance data
   /// - year: The year to calculate late hours for
   /// - attendanceType: Type of attendance to filter by
-  /// 
+  ///
   /// Returns a list of late hours for each month (indexed 0-11 for Jan-Dec)
-  static List<double> getMonthlyLateHours(AttendanceProvider provider, int year, {int attendanceType = 1}) {
+  static List<double> getMonthlyLateHours(AttendanceProvider provider, int year,
+      {int attendanceType = 1}) {
     List<double> monthlyLateHours = List.filled(12, 0.0);
-    
+
     for (int month = 1; month <= 12; month++) {
-      monthlyLateHours[month - 1] = calculateLateHours(provider, month, year, attendanceType: attendanceType);
+      monthlyLateHours[month - 1] = calculateLateHours(provider, month, year,
+          attendanceType: attendanceType);
     }
-    
+
     return monthlyLateHours;
   }
-  
+
   /// Calculates early hours for a given month and year
   /// Early hours are calculated as the difference between standard start time (8:00 AM)
   /// and the actual first check-in time when an employee arrives early
-  /// 
+  ///
   /// Parameters:
   /// - provider: The attendance provider containing attendance data
   /// - month: The month number (1-12)
   /// - year: The year
   /// - attendanceType: Type of attendance to filter by
-  /// 
+  ///
   /// Returns the total early hours for the specified month and year in hours (as double)
-  static double calculateEarlyHours(AttendanceProvider provider, int month, int year, {int attendanceType = 1}) {
+  static double calculateEarlyHours(
+      AttendanceProvider provider, int month, int year,
+      {int attendanceType = 1}) {
     // Check if attendance data is available and loaded successfully
-    if (provider.attendanceList == null || 
-        provider.attendanceList!.state != AsyncValueState.success || 
+    if (provider.attendanceList == null ||
+        provider.attendanceList!.state != AsyncValueState.success ||
         provider.attendanceList!.data == null) {
       return 0.0;
     }
-    
+
     final attendanceList = provider.attendanceList!.data!;
-    
+
     // Filter attendance records for the specified month, year and attendance type
     final monthAttendance = attendanceList.where((attendance) {
       if (attendance.attendanceDate == null) return false;
       if (attendance.workTypeId != attendanceType) return false;
-      
+
       final attendanceDate = DateTime.tryParse(attendance.attendanceDate!);
       if (attendanceDate == null) return false;
-      
+
       return attendanceDate.year == year && attendanceDate.month == month;
     }).toList();
-    
+
     if (monthAttendance.isEmpty) {
       return 0.0;
     }
-    
+
     // Group attendance records by date
     Map<String, List<Attendance>> attendanceByDate = {};
-    
+
     for (var attendance in monthAttendance) {
       if (attendance.attendanceDate != null) {
         if (!attendanceByDate.containsKey(attendance.attendanceDate)) {
@@ -995,20 +1086,17 @@ class AttendanceService {
         attendanceByDate[attendance.attendanceDate!]!.add(attendance);
       }
     }
-    
+
     int totalEarlyMinutes = 0;
-    
-    // Standard start time: 8:00 AM = 480 minutes
-    const int standardStartTimeInMinutes = 8 * 60; // 480 minutes
-    
-    // Calculate early minutes for each day
+
+    // Calculate early minutes for each day (early = before 8:00 AM)
     attendanceByDate.forEach((date, records) {
       // Sort records by time
       records.sort((a, b) {
         if (a.attendanceTime == null || b.attendanceTime == null) return 0;
         return a.attendanceTime!.compareTo(b.attendanceTime!);
       });
-      
+
       // Find first check-in
       Attendance? firstCheckIn;
       for (var record in records) {
@@ -1017,79 +1105,84 @@ class AttendanceService {
           break;
         }
       }
-      
-      // Calculate early minutes if first check-in exists and is before standard start time
+
+      // Calculate early minutes if first check-in exists and is before 8:00 AM
       if (firstCheckIn != null && firstCheckIn.attendanceTime != null) {
         final checkInTime = _parseTimeToMinutes(firstCheckIn.attendanceTime);
-        
-        if (checkInTime != null && checkInTime < standardStartTimeInMinutes) {
-          // Calculate how many minutes early (standard start time minus check-in time)
-          int earlyMinutes = standardStartTimeInMinutes - checkInTime;
+
+        if (checkInTime != null && checkInTime < standardStartTime) {
+          // Calculate how many minutes early (8:00 AM minus check-in time)
+          int earlyMinutes = standardStartTime - checkInTime;
           totalEarlyMinutes += earlyMinutes;
         }
       }
     });
-    
+
     // Convert minutes to hours
     return totalEarlyMinutes / 60.0;
   }
-  
+
   /// Calculates total early hours for each month of a specific year
-  /// 
+  ///
   /// Parameters:
   /// - provider: The attendance provider containing attendance data
   /// - year: The year to calculate early hours for
   /// - attendanceType: Type of attendance to filter by
-  /// 
+  ///
   /// Returns a list of early hours for each month (indexed 0-11 for Jan-Dec)
-  static List<double> getMonthlyEarlyHours(AttendanceProvider provider, int year, {int attendanceType = 1}) {
+  static List<double> getMonthlyEarlyHours(
+      AttendanceProvider provider, int year,
+      {int attendanceType = 1}) {
     List<double> monthlyEarlyHours = List.filled(12, 0.0);
-    
+
     for (int month = 1; month <= 12; month++) {
-      monthlyEarlyHours[month - 1] = calculateEarlyHours(provider, month, year, attendanceType: attendanceType);
+      monthlyEarlyHours[month - 1] = calculateEarlyHours(provider, month, year,
+          attendanceType: attendanceType);
     }
-    
+
     return monthlyEarlyHours;
   }
-  
+
   /// Calculates on-time hours for a given month and year
-  /// On-time hours are calculated when an employee arrives exactly at 8:00 AM
-  /// 
+  /// On-time hours are calculated when an employee arrives between 8:00-8:05 AM
+  ///
   /// Parameters:
   /// - provider: The attendance provider containing attendance data
   /// - month: The month number (1-12)
   /// - year: The year
   /// - attendanceType: Type of attendance to filter by
-  /// 
+  ///
   /// Returns the total on-time hours for the specified month and year in hours (as double)
-  static double calculateOnTimeHours(AttendanceProvider provider, int month, int year, {int attendanceType = 1}) {
+  static double calculateOnTimeHours(
+      AttendanceProvider provider, int month, int year,
+      {int attendanceType = 1}) {
     // Check if attendance data is available and loaded successfully
-    if (provider.attendanceList == null || 
-        provider.attendanceList!.state != AsyncValueState.success || 
+    if (provider.attendanceList == null ||
+        provider.attendanceList!.state != AsyncValueState.success ||
         provider.attendanceList!.data == null) {
       return 0.0;
     }
-    
+
     final attendanceList = provider.attendanceList!.data!;
-    
+
     // Filter attendance records for the specified month, year and attendance type
     final monthAttendance = attendanceList.where((attendance) {
       if (attendance.attendanceDate == null) return false;
       if (attendance.workTypeId != attendanceType) return false;
-      
+
       final attendanceDate = DateTime.tryParse(attendance.attendanceDate!);
       if (attendanceDate == null) return false;
-      
+
       return attendanceDate.year == year && attendanceDate.month == month;
     }).toList();
-    
+
     if (monthAttendance.isEmpty) {
       return 0.0;
     }
-    
+
     // Group attendance records by date
     Map<String, List<Attendance>> attendanceByDate = {};
-    
+
     for (var attendance in monthAttendance) {
       if (attendance.attendanceDate != null) {
         if (!attendanceByDate.containsKey(attendance.attendanceDate)) {
@@ -1098,20 +1191,17 @@ class AttendanceService {
         attendanceByDate[attendance.attendanceDate!]!.add(attendance);
       }
     }
-    
+
     int totalOnTimeMinutes = 0;
-    
-    // Standard start time: 8:00 AM = 480 minutes
-    const int standardStartTimeInMinutes = 8 * 60; // 480 minutes
-    
-    // Calculate on-time minutes for each day
+
+    // Calculate on-time minutes for each day (on-time = 8:00-8:05 AM)
     attendanceByDate.forEach((date, records) {
       // Sort records by time
       records.sort((a, b) {
         if (a.attendanceTime == null || b.attendanceTime == null) return 0;
         return a.attendanceTime!.compareTo(b.attendanceTime!);
       });
-      
+
       // Find first check-in
       Attendance? firstCheckIn;
       for (var record in records) {
@@ -1120,7 +1210,7 @@ class AttendanceService {
           break;
         }
       }
-      
+
       // Find last check-out
       Attendance? lastCheckOut;
       for (var i = records.length - 1; i >= 0; i--) {
@@ -1129,67 +1219,74 @@ class AttendanceService {
           break;
         }
       }
-      
-      // Calculate on-time working minutes if check-in is exactly at 8:00 AM
+
+      // Calculate on-time working minutes if check-in is between 8:00-8:05 AM
       if (firstCheckIn != null && lastCheckOut != null) {
         final checkInTime = _parseTimeToMinutes(firstCheckIn.attendanceTime);
         final checkOutTime = _parseTimeToMinutes(lastCheckOut.attendanceTime);
-        
+
         if (checkInTime != null && checkOutTime != null) {
-          if (checkInTime == standardStartTimeInMinutes) {
-            // On-time arrival (exactly at 8:00 AM)
-            totalOnTimeMinutes += (checkOutTime - checkInTime);
+          if (checkInTime >= standardStartTime &&
+              checkInTime <= lateThreshold) {
+            // On-time arrival (between 8:00-8:05 AM)
+            totalOnTimeMinutes += _calculateWorkingMinutesWithLunchDeduction(
+                checkInTime, checkOutTime);
           }
         }
       }
     });
-    
+
     // Convert minutes to hours
     return totalOnTimeMinutes / 60.0;
   }
-  
+
   /// Calculates total on-time hours for each month of a specific year
-  /// 
+  ///
   /// Parameters:
   /// - provider: The attendance provider containing attendance data
   /// - year: The year to calculate on-time hours for
   /// - attendanceType: Type of attendance to filter by
-  /// 
+  ///
   /// Returns a list of on-time hours for each month (indexed 0-11 for Jan-Dec)
-  static List<double> getMonthlyOnTimeHours(AttendanceProvider provider, int year, {int attendanceType = 1}) {
+  static List<double> getMonthlyOnTimeHours(
+      AttendanceProvider provider, int year,
+      {int attendanceType = 1}) {
     List<double> monthlyOnTimeHours = List.filled(12, 0.0);
-    
+
     for (int month = 1; month <= 12; month++) {
-      monthlyOnTimeHours[month - 1] = calculateOnTimeHours(provider, month, year, attendanceType: attendanceType);
+      monthlyOnTimeHours[month - 1] = calculateOnTimeHours(
+          provider, month, year,
+          attendanceType: attendanceType);
     }
-    
+
     return monthlyOnTimeHours;
   }
-  
+
   /// Gets all attendance data formatted for display in cards
   /// Returns a list of maps containing attendance information for each day with records
-  /// 
+  ///
   /// Parameters:
   /// - provider: The attendance provider containing attendance data
   /// - attendanceType: Type of attendance (1: Normal, 2: Overtime, 3: Part Time)
   static List<Map<String, String?>> getAllAttendanceCardData(
-    AttendanceProvider provider,
-    {int attendanceType = 1} // Default to Normal attendance type
-  ) {
+      AttendanceProvider provider,
+      {int attendanceType = 1} // Default to Normal attendance type
+      ) {
     // Check if attendance data is available and loaded successfully
-    if (provider.attendanceList == null || 
-        provider.attendanceList!.state != AsyncValueState.success || 
+    if (provider.attendanceList == null ||
+        provider.attendanceList!.state != AsyncValueState.success ||
         provider.attendanceList!.data == null) {
       return [];
     }
-    
+
     final attendanceList = provider.attendanceList!.data!;
-    
+
     // Filter attendance records by attendance type and group by date
     Map<String, List<Attendance>> groupedByDate = {};
-    
+
     for (var attendance in attendanceList) {
-      if (attendance.workTypeId == attendanceType && attendance.attendanceDate != null) {
+      if (attendance.workTypeId == attendanceType &&
+          attendance.attendanceDate != null) {
         final dateKey = attendance.attendanceDate!;
         if (!groupedByDate.containsKey(dateKey)) {
           groupedByDate[dateKey] = [];
@@ -1197,34 +1294,35 @@ class AttendanceService {
         groupedByDate[dateKey]!.add(attendance);
       }
     }
-    
+
     // Convert grouped data to card format
     List<Map<String, String?>> allData = [];
-    
+
     // Sort dates in descending order (newest first)
     var sortedDates = groupedByDate.keys.toList()
       ..sort((a, b) => b.compareTo(a));
-    
+
     for (String dateString in sortedDates) {
       final dayAttendance = groupedByDate[dateString]!;
-      
+
       // Parse date for formatting
       final dateParts = dateString.split('-');
       final year = int.parse(dateParts[0]);
       final month = int.parse(dateParts[1]);
       final day = int.parse(dateParts[2]);
-      final formattedDate = "${day.toString().padLeft(2, '0')}/${month.toString().padLeft(2, '0')}/$year";
-      
+      final formattedDate =
+          "${day.toString().padLeft(2, '0')}/${month.toString().padLeft(2, '0')}/$year";
+
       // Sort records by time
       dayAttendance.sort((a, b) {
         if (a.attendanceTime == null || b.attendanceTime == null) return 0;
         return a.attendanceTime!.compareTo(b.attendanceTime!);
       });
-      
+
       // Find first check-in and last check-out
       Attendance? firstCheckIn;
       Attendance? lastCheckOut;
-      
+
       // Find first check-in
       for (var record in dayAttendance) {
         if (record.inOut == 'in') {
@@ -1232,7 +1330,7 @@ class AttendanceService {
           break;
         }
       }
-      
+
       // Find last check-out
       for (var i = dayAttendance.length - 1; i >= 0; i--) {
         if (dayAttendance[i].inOut == 'out') {
@@ -1240,38 +1338,44 @@ class AttendanceService {
           break;
         }
       }
-      
+
       // Calculate working time
       int workingMinutes = 0;
       if (firstCheckIn != null && lastCheckOut != null) {
         final checkInTime = _parseTimeToMinutes(firstCheckIn.attendanceTime);
         final checkOutTime = _parseTimeToMinutes(lastCheckOut.attendanceTime);
-        
+
         if (checkInTime != null && checkOutTime != null) {
-          workingMinutes = checkOutTime - checkInTime;
+          // Use lunch break deduction method
+          workingMinutes = _calculateWorkingMinutesWithLunchDeduction(
+              checkInTime, checkOutTime);
         }
       }
-      
+
       // Determine status based on check-in time
       String status = 'Present';
       if (firstCheckIn != null && firstCheckIn.attendanceTime != null) {
         final checkInTime = _parseTimeToMinutes(firstCheckIn.attendanceTime);
         if (checkInTime != null) {
-          // Assuming standard work hours start at 8:00 AM (480 minutes)
-          if (checkInTime <= 480) {
+          // Standard working hours: 8:00-8:05 AM is On Time, after 8:05 AM is Late
+          if (checkInTime < standardStartTime) {
+            status = 'Early';
+          } else if (checkInTime <= lateThreshold) {
             status = 'On Time';
           } else {
             status = 'Late';
           }
         }
       }
-      
+
       // Format check-in and check-out times for display
-      String? formattedCheckIn = firstCheckIn?.attendanceTime != null ? 
-                               _formatTimeForDisplay(firstCheckIn!.attendanceTime!) : null;
-      String? formattedCheckOut = lastCheckOut?.attendanceTime != null ? 
-                                _formatTimeForDisplay(lastCheckOut!.attendanceTime!) : null;
-      
+      String? formattedCheckIn = firstCheckIn?.attendanceTime != null
+          ? _formatTimeForDisplay(firstCheckIn!.attendanceTime!)
+          : null;
+      String? formattedCheckOut = lastCheckOut?.attendanceTime != null
+          ? _formatTimeForDisplay(lastCheckOut!.attendanceTime!)
+          : null;
+
       Map<String, String?> dayData = {
         'date': formattedDate,
         'checkInTime': formattedCheckIn,
@@ -1281,7 +1385,7 @@ class AttendanceService {
       };
       allData.add(dayData);
     }
-    
+
     return allData;
   }
 }

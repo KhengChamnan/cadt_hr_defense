@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:syncfusion_flutter_datepicker/datepicker.dart';
 import 'package:palm_ecommerce_mobile_app_2/theme/app_theme.dart';
 import 'package:palm_ecommerce_mobile_app_2/services/holiday_service.dart';
+import 'package:palm_ecommerce_mobile_app_2/providers/staff/staff_provder.dart';
+import 'package:palm_ecommerce_mobile_app_2/providers/asyncvalue.dart';
 
 /// A custom date range picker widget using Syncfusion that follows the app's theme
 /// This widget allows users to select a date range with visual feedback and validation
@@ -102,6 +105,100 @@ class _DateRangePickerWidgetState extends State<DateRangePickerWidget> {
     return end.difference(start).inDays + 1;
   }
 
+  /// Calculate remaining annual leave balance after the selected date range
+  String _calculateRemainingBalance(StaffProvider staffProvider) {
+    if (widget.startDate == null || widget.endDate == null) {
+      return '';
+    }
+
+    if (staffProvider.staffInfo?.state == AsyncValueState.success) {
+      final balance = staffProvider.staffInfo!.data!.balanceAnnually;
+      if (balance != null && balance.isNotEmpty) {
+        final balanceHours = double.tryParse(balance) ?? 0.0;
+        final balanceDays = balanceHours / 8.0;
+
+        // Calculate requested leave days (working days only)
+        final holidayAnalysis =
+            HolidayService.analyzeRange(widget.startDate!, widget.endDate!);
+        final requestedDays = holidayAnalysis.workingDays.toDouble();
+
+        // Calculate remaining balance
+        final remainingDays = balanceDays - requestedDays;
+
+        // Handle negative balance - show 0 for clean UI
+        final displayDays = remainingDays < 0 ? 0.0 : remainingDays;
+
+        return '${displayDays.toStringAsFixed(1)} days remaining after this request';
+      }
+    }
+    return 'Balance not available';
+  }
+
+  /// Check if the request would result in negative balance
+  bool _wouldResultInNegativeBalance(StaffProvider staffProvider) {
+    if (widget.startDate == null || widget.endDate == null) {
+      return false;
+    }
+
+    if (staffProvider.staffInfo?.state == AsyncValueState.success) {
+      final balance = staffProvider.staffInfo!.data!.balanceAnnually;
+      if (balance != null && balance.isNotEmpty) {
+        final balanceHours = double.tryParse(balance) ?? 0.0;
+        final balanceDays = balanceHours / 8.0;
+
+        final holidayAnalysis =
+            HolidayService.analyzeRange(widget.startDate!, widget.endDate!);
+        final requestedDays = holidayAnalysis.workingDays.toDouble();
+
+        return (balanceDays - requestedDays) < 0;
+      }
+    }
+    return false;
+  }
+
+  /// Calculate remaining balance for specific dates
+  String _calculateRemainingBalanceForDates(
+      StaffProvider staffProvider, DateTime startDate, DateTime endDate) {
+    if (staffProvider.staffInfo?.state == AsyncValueState.success) {
+      final balance = staffProvider.staffInfo!.data!.balanceAnnually;
+      if (balance != null && balance.isNotEmpty) {
+        final balanceHours = double.tryParse(balance) ?? 0.0;
+        final balanceDays = balanceHours / 8.0;
+
+        // Calculate requested leave days (working days only)
+        final holidayAnalysis = HolidayService.analyzeRange(startDate, endDate);
+        final requestedDays = holidayAnalysis.workingDays.toDouble();
+
+        // Calculate remaining balance
+        final remainingDays = balanceDays - requestedDays;
+
+        // Handle negative balance - show 0 for clean UI
+        final displayDays = remainingDays < 0 ? 0.0 : remainingDays;
+
+        return '${displayDays.toStringAsFixed(1)} days remaining after this request';
+      }
+    }
+    return 'Balance not available';
+  }
+
+  /// Check if specific dates would result in negative balance
+  bool _wouldResultInNegativeBalanceForDates(
+      StaffProvider staffProvider, DateTime startDate, DateTime endDate) {
+    if (staffProvider.staffInfo?.state == AsyncValueState.success) {
+      final balance = staffProvider.staffInfo!.data!.balanceAnnually;
+      if (balance != null && balance.isNotEmpty) {
+        final balanceHours = double.tryParse(balance) ?? 0.0;
+        final balanceDays = balanceHours / 8.0;
+
+        final holidayAnalysis = HolidayService.analyzeRange(startDate, endDate);
+        final requestedDays = holidayAnalysis.workingDays.toDouble();
+
+        return (balanceDays - requestedDays) < 0;
+      }
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -196,111 +293,195 @@ class _DateRangePickerWidgetState extends State<DateRangePickerWidget> {
 
   /// Build the selected range display
   Widget _buildSelectedRangeDisplay() {
-    final days = _calculateDays(widget.startDate!, widget.endDate!);
-    return Container(
-      padding: const EdgeInsets.all(PalmSpacings.s),
-      decoration: BoxDecoration(
-        color: PalmColors.white.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(PalmSpacings.s),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Text(
-                  _formatDate(widget.startDate!),
-                  style: PalmTextStyles.body.copyWith(
-                    color: PalmColors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(PalmSpacings.s),
+          decoration: BoxDecoration(
+            color: PalmColors.white.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(PalmSpacings.s),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      _formatDate(widget.startDate!),
+                      style: PalmTextStyles.body.copyWith(
+                        color: PalmColors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: PalmSpacings.xxs),
+                    Text(
+                      'FROM',
+                      style: PalmTextStyles.caption.copyWith(
+                        color: PalmColors.white.withOpacity(0.8),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: PalmSpacings.xxs),
-                Text(
-                  'FROM',
-                  style: PalmTextStyles.caption.copyWith(
-                    color: PalmColors.white.withOpacity(0.8),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
+              ),
+              Container(
+                padding: const EdgeInsets.all(PalmSpacings.xs),
+                decoration: BoxDecoration(
+                  color: PalmColors.white.withOpacity(0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.arrow_forward,
+                  color: PalmColors.white,
+                  size: 16,
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Text(
+                      _formatDate(widget.endDate!),
+                      style: PalmTextStyles.body.copyWith(
+                        color: PalmColors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: PalmSpacings.xxs),
+                    Text(
+                      'TO',
+                      style: PalmTextStyles.caption.copyWith(
+                        color: PalmColors.white.withOpacity(0.8),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Annual leave balance display
+        const SizedBox(height: PalmSpacings.s),
+        Consumer<StaffProvider>(
+          builder: (context, staffProvider, child) {
+            final balanceText = _calculateRemainingBalance(staffProvider);
+            final wouldBeNegative =
+                _wouldResultInNegativeBalance(staffProvider);
+
+            if (balanceText.isEmpty) return const SizedBox.shrink();
+
+            return Row(
+              children: [
+                Icon(
+                  wouldBeNegative
+                      ? Icons.warning_outlined
+                      : Icons.check_circle_outline,
+                  color: wouldBeNegative ? PalmColors.danger : PalmColors.white,
+                  size: 16,
+                ),
+                const SizedBox(width: PalmSpacings.xs),
+                Expanded(
+                  child: Text(
+                    balanceText,
+                    style: PalmTextStyles.caption.copyWith(
+                      color: wouldBeNegative
+                          ? PalmColors.danger
+                          : PalmColors.white,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 11,
+                    ),
                   ),
                 ),
               ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.all(PalmSpacings.xs),
-            decoration: BoxDecoration(
-              color: PalmColors.white.withOpacity(0.2),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              Icons.arrow_forward,
-              color: PalmColors.white,
-              size: 16,
-            ),
-          ),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Text(
-                  _formatDate(widget.endDate!),
-                  style: PalmTextStyles.body.copyWith(
-                    color: PalmColors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: PalmSpacings.xxs),
-                Text(
-                  'TO',
-                  style: PalmTextStyles.caption.copyWith(
-                    color: PalmColors.white.withOpacity(0.8),
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+            );
+          },
+        ),
+      ],
     );
   }
 
   /// Build single date display
   Widget _buildSingleDateDisplay() {
-    return Container(
-      padding: const EdgeInsets.all(PalmSpacings.s),
-      decoration: BoxDecoration(
-        color: PalmColors.white.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(PalmSpacings.s),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.event,
-            color: PalmColors.white,
-            size: 16,
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(PalmSpacings.s),
+          decoration: BoxDecoration(
+            color: PalmColors.white.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(PalmSpacings.s),
           ),
-          const SizedBox(width: PalmSpacings.s),
-          Text(
-            _formatDate(widget.startDate!),
-            style: PalmTextStyles.body.copyWith(
-              color: PalmColors.white,
-              fontWeight: FontWeight.bold,
-            ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.event,
+                color: PalmColors.white,
+                size: 16,
+              ),
+              const SizedBox(width: PalmSpacings.s),
+              Text(
+                _formatDate(widget.startDate!),
+                style: PalmTextStyles.body.copyWith(
+                  color: PalmColors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(width: PalmSpacings.s),
+              Text(
+                '(Select end date)',
+                style: PalmTextStyles.caption.copyWith(
+                  color: PalmColors.white.withOpacity(0.8),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: PalmSpacings.s),
-          Text(
-            '(Select end date)',
-            style: PalmTextStyles.caption.copyWith(
-              color: PalmColors.white.withOpacity(0.8),
-            ),
-          ),
-        ],
-      ),
+        ),
+
+        // Annual leave balance display for single day
+        const SizedBox(height: PalmSpacings.s),
+        Consumer<StaffProvider>(
+          builder: (context, staffProvider, child) {
+            // For single day, use start date as both start and end
+            final tempEndDate = widget.startDate!;
+            final balanceText = _calculateRemainingBalanceForDates(
+                staffProvider, widget.startDate!, tempEndDate);
+            final wouldBeNegative = _wouldResultInNegativeBalanceForDates(
+                staffProvider, widget.startDate!, tempEndDate);
+
+            if (balanceText.isEmpty) return const SizedBox.shrink();
+
+            return Row(
+              children: [
+                Icon(
+                  wouldBeNegative
+                      ? Icons.warning_outlined
+                      : Icons.check_circle_outline,
+                  color: wouldBeNegative ? PalmColors.danger : PalmColors.white,
+                  size: 16,
+                ),
+                const SizedBox(width: PalmSpacings.xs),
+                Expanded(
+                  child: Text(
+                    balanceText,
+                    style: PalmTextStyles.caption.copyWith(
+                      color: wouldBeNegative
+                          ? PalmColors.danger
+                          : PalmColors.white,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ],
     );
   }
 
@@ -384,7 +565,7 @@ class _DateRangePickerWidgetState extends State<DateRangePickerWidget> {
       ),
       child: Column(
         children: [
-          // Duration display
+          // Duration display and balance info
           if (hasSelection) ...[
             Builder(
               builder: (context) {
@@ -415,6 +596,59 @@ class _DateRangePickerWidgetState extends State<DateRangePickerWidget> {
                         style: PalmTextStyles.body.copyWith(
                           color: PalmColors.primary,
                           fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+
+            // Balance display in footer
+            const SizedBox(height: PalmSpacings.s),
+            Consumer<StaffProvider>(
+              builder: (context, staffProvider, child) {
+                final balanceText = _calculateRemainingBalance(staffProvider);
+                final wouldBeNegative =
+                    _wouldResultInNegativeBalance(staffProvider);
+
+                if (balanceText.isEmpty) return const SizedBox.shrink();
+
+                return Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: PalmSpacings.m,
+                    vertical: PalmSpacings.s,
+                  ),
+                  decoration: BoxDecoration(
+                    color: wouldBeNegative
+                        ? PalmColors.danger.withOpacity(0.1)
+                        : PalmColors.success.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(PalmSpacings.s),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        wouldBeNegative
+                            ? Icons.warning_outlined
+                            : Icons.account_balance_wallet,
+                        color: wouldBeNegative
+                            ? PalmColors.danger
+                            : PalmColors.success,
+                        size: 20,
+                      ),
+                      const SizedBox(width: PalmSpacings.s),
+                      Expanded(
+                        child: Text(
+                          balanceText,
+                          textAlign: TextAlign.center,
+                          style: PalmTextStyles.body.copyWith(
+                            color: wouldBeNegative
+                                ? PalmColors.danger
+                                : PalmColors.success,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
                         ),
                       ),
                     ],

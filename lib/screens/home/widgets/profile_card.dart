@@ -358,7 +358,7 @@ class ProfileCard extends StatelessWidget {
                       InfoRow(
                         icon: Icons.supervisor_account,
                         text: staffProvider != null ? _getManagerName(staffProvider) : (profile.managerName ?? 'Not Assigned'),
-                        label: 'Manager',
+                        label: 'Head Of Dept',
                         iconSize: 14,
                       ),
                       const SizedBox(height: 8),
@@ -366,7 +366,7 @@ class ProfileCard extends StatelessWidget {
                       InfoRow(
                         icon: Icons.person,
                         text: staffProvider != null ? _getSupervisorName(staffProvider) : (profile.supervisorName ?? 'Not Assigned'),
-                        label: 'Supervisor',
+                        label: 'Manager',
                         iconSize: 14,
                       ),
                     ],

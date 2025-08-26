@@ -61,7 +61,8 @@ class LeaveListTile extends StatelessWidget {
 
   // Helper method to get certified status
   String _getCertifiedStatus() {
-    if (leave.supervisorActionDate != null && leave.supervisorActionDate!.isNotEmpty) {
+    if (leave.supervisorActionDate != null &&
+        leave.supervisorActionDate!.isNotEmpty) {
       final status = leave.status?.toLowerCase();
       if (status == 'supervisor_rejected') {
         return 'Rejected';
@@ -70,7 +71,8 @@ class LeaveListTile extends StatelessWidget {
       } else if (status == 'rejected') {
         // If final status is rejected, could be supervisor or manager rejection
         // Check if manager has acted - if not, it was supervisor rejection
-        if (leave.managerActionDate == null || leave.managerActionDate!.isEmpty) {
+        if (leave.managerActionDate == null ||
+            leave.managerActionDate!.isEmpty) {
           return 'Rejected';
         } else {
           return 'Approved'; // Supervisor approved, manager rejected
@@ -88,30 +90,31 @@ class LeaveListTile extends StatelessWidget {
   // Helper method to get approved status
   String _getApprovedStatus() {
     final status = leave.status?.toLowerCase();
-    
+
     // If supervisor rejected, manager never gets to review
     if (status == 'supervisor_rejected') {
       return 'N/A';
     }
-    
-    if (leave.managerActionDate != null && leave.managerActionDate!.isNotEmpty) {
+
+    if (leave.managerActionDate != null &&
+        leave.managerActionDate!.isNotEmpty) {
       if (status == 'approved') {
         return 'Approved';
       } else if (status == 'rejected') {
         return 'Rejected';
       }
     }
-    
+
     // If supervisor hasn't approved yet, manager is still waiting
     if (status == 'pending') {
       return 'Pending';
     }
-    
+
     // If supervisor approved but manager hasn't acted yet
     if (status == 'supervisor_approved') {
       return 'Pending';
     }
-    
+
     return 'Pending';
   }
 
@@ -142,9 +145,9 @@ class LeaveListTile extends StatelessWidget {
   String _getStatusDisplayText(String status) {
     switch (status.toLowerCase()) {
       case 'supervisor_approved':
-        return 'SUP. APPROVED';
+        return 'MGR. APPROVED';
       case 'supervisor_rejected':
-        return 'SUP. REJECTED';
+        return 'MGR. REJECTED';
       default:
         return status.toUpperCase();
     }
@@ -315,84 +318,54 @@ class LeaveListTile extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                        // Status Badge
-                        Row(
-                          children: [
-                            Text(
-                              'Status: ',
-                              style: PalmTextStyles.body.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: PalmColors.textNormal,
+                          // Status Badge
+                          Row(
+                            children: [
+                              Text(
+                                'Status: ',
+                                style: PalmTextStyles.body.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: PalmColors.textNormal,
+                                ),
                               ),
-                            ),
-                            _buildStatusBadge(leave.status ?? 'pending'),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Leave Details
-                        _buildDetailRow(
-                          'Date Range',
-                          _getDateRange(),
-                          Icons.calendar_today,
-                        ),
-                        const SizedBox(height: 12),
-
-                        _buildDetailRow(
-                          'Duration',
-                          _getDuration(),
-                          Icons.schedule,
-                        ),
-                        const SizedBox(height: 12),
-
-                        _buildDetailRow(
-                          'Leave Type',
-                          leave.leaveType?.value.toUpperCase() ?? 'Unknown',
-                          Icons.category,
-                        ),
-                        const SizedBox(height: 12),
-
-                        _buildDetailRow(
-                          'Reason',
-                          leave.reason ?? 'No reason provided',
-                          Icons.comment,
-                          isExpandable: true,
-                        ),
-                        const SizedBox(height: 20),
-
-                        // Approval Workflow Section
-                        Text(
-                          'Approval Workflow',
-                          style: PalmTextStyles.subheading.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: PalmColors.textNormal,
+                              _buildStatusBadge(leave.status ?? 'pending'),
+                            ],
                           ),
-                        ),
-                        const SizedBox(height: 12),
+                          const SizedBox(height: 16),
 
-                        // Certified by section
-                        _buildApprovalSection(
-                          title: 'Certified By:',
-                          name: _getCertifiedBy(),
-                          status: _getCertifiedStatus(),
-                          dateString: leave.supervisorActionDate,
-                        ),
-                        const SizedBox(height: 12),
+                          // Leave Details
+                          _buildDetailRow(
+                            'Date Range',
+                            _getDateRange(),
+                            Icons.calendar_today,
+                          ),
+                          const SizedBox(height: 12),
 
-                        // Approved by section
-                        _buildApprovalSection(
-                          title: 'Approved By:',
-                          name: _getApprovedBy(),
-                          status: _getApprovedStatus(),
-                          dateString: leave.managerActionDate,
-                        ),
+                          _buildDetailRow(
+                            'Duration',
+                            _getDuration(),
+                            Icons.schedule,
+                          ),
+                          const SizedBox(height: 12),
 
-                        // Comments Section
-                        if ((leave.supervisorComment != null && leave.supervisorComment!.isNotEmpty) ||
-                            (leave.managerComment != null && leave.managerComment!.isNotEmpty)) ...[
+                          _buildDetailRow(
+                            'Leave Type',
+                            leave.leaveType?.value.toUpperCase() ?? 'Unknown',
+                            Icons.category,
+                          ),
+                          const SizedBox(height: 12),
+
+                          _buildDetailRow(
+                            'Reason',
+                            leave.reason ?? 'No reason provided',
+                            Icons.comment,
+                            isExpandable: true,
+                          ),
                           const SizedBox(height: 20),
+
+                          // Approval Workflow Section
                           Text(
-                            'Comments',
+                            'Approval Workflow',
                             style: PalmTextStyles.subheading.copyWith(
                               fontWeight: FontWeight.bold,
                               color: PalmColors.textNormal,
@@ -400,26 +373,61 @@ class LeaveListTile extends StatelessWidget {
                           ),
                           const SizedBox(height: 12),
 
-                          // Supervisor comment
-                          if (leave.supervisorComment != null && leave.supervisorComment!.isNotEmpty)
-                            _buildDetailRow(
-                              'Supervisor Comment',
-                              leave.supervisorComment!,
-                              Icons.supervisor_account,
-                              isExpandable: true,
+                          // Certified by section
+                          _buildApprovalSection(
+                            title: 'Certified By:',
+                            name: _getCertifiedBy(),
+                            status: _getCertifiedStatus(),
+                            dateString: leave.supervisorActionDate,
+                          ),
+                          const SizedBox(height: 12),
+
+                          // Approved by section
+                          _buildApprovalSection(
+                            title: 'Approved By:',
+                            name: _getApprovedBy(),
+                            status: _getApprovedStatus(),
+                            dateString: leave.managerActionDate,
+                          ),
+
+                          // Comments Section
+                          if ((leave.supervisorComment != null &&
+                                  leave.supervisorComment!.isNotEmpty) ||
+                              (leave.managerComment != null &&
+                                  leave.managerComment!.isNotEmpty)) ...[
+                            const SizedBox(height: 20),
+                            Text(
+                              'Comments',
+                              style: PalmTextStyles.subheading.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: PalmColors.textNormal,
+                              ),
                             ),
-                          if (leave.supervisorComment != null && leave.supervisorComment!.isNotEmpty)
                             const SizedBox(height: 12),
 
-                          // Manager comment
-                          if (leave.managerComment != null && leave.managerComment!.isNotEmpty)
-                            _buildDetailRow(
-                              'Manager Comment',
-                              leave.managerComment!,
-                              Icons.manage_accounts,
-                              isExpandable: true,
-                            ),
-                        ],
+                            // Manager comment (previously supervisor comment)
+                            if (leave.supervisorComment != null &&
+                                leave.supervisorComment!.isNotEmpty)
+                              _buildDetailRow(
+                                'Manager Comment',
+                                leave.supervisorComment!,
+                                Icons.supervisor_account,
+                                isExpandable: true,
+                              ),
+                            if (leave.supervisorComment != null &&
+                                leave.supervisorComment!.isNotEmpty)
+                              const SizedBox(height: 12),
+
+                            // Head of Dept comment (previously manager comment)
+                            if (leave.managerComment != null &&
+                                leave.managerComment!.isNotEmpty)
+                              _buildDetailRow(
+                                'Head of Dept Comment',
+                                leave.managerComment!,
+                                Icons.manage_accounts,
+                                isExpandable: true,
+                              ),
+                          ],
                         ],
                       ),
                     ),
