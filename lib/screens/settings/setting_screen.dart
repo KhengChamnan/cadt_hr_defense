@@ -12,7 +12,6 @@ import 'package:palm_ecommerce_mobile_app_2/providers/auth/auth_provider.dart';
 import 'package:palm_ecommerce_mobile_app_2/providers/settings_provider.dart';
 import 'package:palm_ecommerce_mobile_app_2/providers/profile_provider.dart';
 import 'package:palm_ecommerce_mobile_app_2/providers/approval/approval_provider.dart';
-import 'package:palm_ecommerce_mobile_app_2/providers/staff/staff_provder.dart';
 import 'package:palm_ecommerce_mobile_app_2/providers/asyncvalue.dart';
 
 /// SettingScreen displays the user profile information and settings
@@ -66,15 +65,12 @@ class _SettingScreenState extends State<SettingScreen> {
                     Provider.of<ProfileProvider>(context, listen: false);
                 final approvalProvider =
                     Provider.of<ApprovalProvider>(context, listen: false);
-                final staffProvider =
-                    Provider.of<StaffProvider>(context, listen: false);
 
                 // Clear all provider data first
                 print('🔄 Starting logout process...');
                 settingsProvider.clearAllData();
                 profileProvider.clearProfileInfo();
                 approvalProvider.clearApprovalDashboard();
-                staffProvider.clearStaffInfo(); // Clear staff data too
                 print('✅ All provider data cleared');
 
                 // Then logout

@@ -86,10 +86,9 @@ class ProfileCard extends StatelessWidget {
             final authReady = await authProvider.waitForAuth(
                 timeout: const Duration(seconds: 3));
             if (authReady) {
-              // Force refresh profile data to avoid cached data from previous account
-              profileProvider.forceRefreshProfile();
-              // Also force refresh staff info for manager and supervisor data
-              staffProvider.forceRefreshStaff();
+              profileProvider.getProfileInfoSafe();
+              // Also load staff info for manager and supervisor data
+              staffProvider.getStaffInfoSafe();
             } else {
               print('❌ ProfileCard: Auth not ready, showing skeleton');
             }
@@ -113,9 +112,8 @@ class ProfileCard extends StatelessWidget {
                 final authReady = await authProvider.waitForAuth(
                     timeout: const Duration(seconds: 2));
                 if (authReady) {
-                  // Force refresh to ensure clean data
-                  profileProvider.forceRefreshProfile();
-                  staffProvider.forceRefreshStaff();
+                  profileProvider.getProfileInfoSafe();
+                  staffProvider.getStaffInfoSafe();
                 }
               });
               return _buildSkeletonProfileCard();
@@ -134,10 +132,7 @@ class ProfileCard extends StatelessWidget {
       final manager = staffInfo!.data!.manager!;
       final firstName = manager.firstNameEng ?? manager.firstNameKh ?? '';
       final lastName = manager.lastNameEng ?? manager.lastNameKh ?? '';
-      final fullName = '${firstName} ${lastName}'.trim();
-
-      // Return 'Not Assigned' if the name is empty or just whitespace
-      return fullName.isEmpty ? 'Not Assigned' : fullName;
+      return '${firstName} ${lastName}'.trim();
     }
     return 'Not Assigned';
   }
@@ -149,60 +144,9 @@ class ProfileCard extends StatelessWidget {
       final supervisor = staffInfo!.data!.supervisor!;
       final firstName = supervisor.firstNameEng ?? supervisor.firstNameKh ?? '';
       final lastName = supervisor.lastNameEng ?? supervisor.lastNameKh ?? '';
-      final fullName = '${firstName} ${lastName}'.trim();
-
-      // Return 'Not Assigned' if the name is empty or just whitespace
-      return fullName.isEmpty ? 'Not Assigned' : fullName;
+      return '${firstName} ${lastName}'.trim();
     }
     return 'Not Assigned';
-  }
-
-  /// Safe getter for manager name with additional validation
-  String _getSafeManagerName(
-      StaffProvider? staffProvider, ProfileInfo profile) {
-    // Ensure we have a valid staff provider and it's in a success state
-    if (staffProvider != null &&
-        staffProvider.staffInfo?.state == AsyncValueState.success) {
-      final managerName = _getManagerName(staffProvider);
-
-      // Debug: Print current staff info state
-      print(
-          '🔍 ProfileCard: Staff provider state: ${staffProvider.staffInfo?.state}, Manager: $managerName');
-
-      // If we get a valid manager name from staff provider, use it
-      if (managerName != 'Not Assigned') {
-        return managerName;
-      }
-    }
-
-    // Fallback to profile data if available, otherwise 'Not Assigned'
-    final fallbackName = profile.managerName ?? 'Not Assigned';
-    print('🔍 ProfileCard: Using fallback manager name: $fallbackName');
-    return fallbackName;
-  }
-
-  /// Safe getter for supervisor name with additional validation
-  String _getSafeSupervisorName(
-      StaffProvider? staffProvider, ProfileInfo profile) {
-    // Ensure we have a valid staff provider and it's in a success state
-    if (staffProvider != null &&
-        staffProvider.staffInfo?.state == AsyncValueState.success) {
-      final supervisorName = _getSupervisorName(staffProvider);
-
-      // Debug: Print current staff info state
-      print(
-          '🔍 ProfileCard: Staff provider state: ${staffProvider.staffInfo?.state}, Supervisor: $supervisorName');
-
-      // If we get a valid supervisor name from staff provider, use it
-      if (supervisorName != 'Not Assigned') {
-        return supervisorName;
-      }
-    }
-
-    // Fallback to profile data if available, otherwise 'Not Assigned'
-    final fallbackName = profile.supervisorName ?? 'Not Assigned';
-    print('🔍 ProfileCard: Using fallback supervisor name: $fallbackName');
-    return fallbackName;
   }
 
   Widget _buildSkeletonProfileCard() {
@@ -419,14 +363,18 @@ class ProfileCard extends StatelessWidget {
                     children: [
                       InfoRow(
                         icon: Icons.supervisor_account,
-                        text: _getSafeManagerName(staffProvider, profile),
+                        text: staffProvider != null
+                            ? _getManagerName(staffProvider)
+                            : (profile.managerName ?? 'Not Assigned'),
                         label: 'Head Of Dept',
                         iconSize: 14,
                       ),
                       const SizedBox(height: 8),
                       InfoRow(
                         icon: Icons.person,
-                        text: _getSafeSupervisorName(staffProvider, profile),
+                        text: staffProvider != null
+                            ? _getSupervisorName(staffProvider)
+                            : (profile.supervisorName ?? 'Not Assigned'),
                         label: 'Manager',
                         iconSize: 14,
                       ),
