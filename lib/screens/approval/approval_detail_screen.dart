@@ -26,6 +26,7 @@ class ApprovalDetailScreen extends StatefulWidget {
 
 class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
   final TextEditingController _commentController = TextEditingController();
+  final FocusNode _commentFocusNode = FocusNode();
 
   // Get the current approval role
   ApprovalRole get _currentRole =>
@@ -37,6 +38,7 @@ class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
   @override
   void dispose() {
     _commentController.dispose();
+    _commentFocusNode.dispose();
     super.dispose();
   }
 
@@ -201,7 +203,7 @@ class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
       body: GestureDetector(
         onTap: () {
           // Dismiss keyboard when tapping outside text field
-          FocusScope.of(context).unfocus();
+          _commentFocusNode.unfocus();
         },
         child: Consumer<ApprovalProvider>(
           builder: (context, approvalProvider, child) {
@@ -211,7 +213,14 @@ class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
             }
 
             return SingleChildScrollView(
-              padding: const EdgeInsets.all(PalmSpacings.m),
+              physics: const ClampingScrollPhysics(),
+              padding: EdgeInsets.only(
+                left: PalmSpacings.m,
+                right: PalmSpacings.m,
+                top: PalmSpacings.m,
+                bottom:
+                    MediaQuery.of(context).viewInsets.bottom + PalmSpacings.m,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -222,6 +231,8 @@ class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
                   _buildCommentSection(),
                   const SizedBox(height: PalmSpacings.xl),
                   _buildActionButtons(approvalProvider),
+                  // Extra space for keyboard padding
+                  const SizedBox(height: PalmSpacings.xl),
                 ],
               ),
             );
@@ -439,25 +450,43 @@ class _ApprovalDetailScreenState extends State<ApprovalDetailScreen> {
         ),
         const SizedBox(height: PalmSpacings.s),
         Container(
-          height: 120,
+          constraints: const BoxConstraints(
+            minHeight: 120,
+          ),
           decoration: BoxDecoration(
             color: PalmColors.greyLight.withOpacity(0.3),
             borderRadius: BorderRadius.circular(12),
           ),
           child: TextField(
             controller: _commentController,
-            maxLines: 5,
+            focusNode: _commentFocusNode,
+            maxLines: null,
+            minLines: 5,
             keyboardType: TextInputType.multiline,
             textInputAction: TextInputAction.done,
             textCapitalization: TextCapitalization.sentences,
+            scrollPadding: const EdgeInsets.all(20),
+            onTap: () {
+              // Ensure proper scrolling on iOS when tapping TextField
+              Future.delayed(const Duration(milliseconds: 300), () {
+                if (_commentFocusNode.hasFocus) {
+                  Scrollable.ensureVisible(
+                    context,
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                  );
+                }
+              });
+            },
             onSubmitted: (_) {
               // Dismiss keyboard when done is pressed
-              FocusScope.of(context).unfocus();
+              _commentFocusNode.unfocus();
             },
             decoration: const InputDecoration(
               contentPadding: EdgeInsets.all(PalmSpacings.m),
               hintText: 'Type your comment here...',
               border: InputBorder.none,
+              isCollapsed: false,
             ),
           ),
         ),
