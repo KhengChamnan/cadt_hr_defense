@@ -81,13 +81,15 @@ class ProfileCard extends StatelessWidget {
           // Use safe loading method that checks auth state
           WidgetsBinding.instance.addPostFrameCallback((_) async {
             print('🔄 ProfileCard: Triggering safe profile load...');
-            
+
             // Wait for auth to be ready before loading
-            final authReady = await authProvider.waitForAuth(timeout: const Duration(seconds: 3));
+            final authReady = await authProvider.waitForAuth(
+                timeout: const Duration(seconds: 3));
             if (authReady) {
-              profileProvider.getProfileInfoSafe();
-              // Also load staff info for manager and supervisor data
-              staffProvider.getStaffInfoSafe();
+              // Force refresh profile data to avoid cached data from previous account
+              profileProvider.forceRefreshProfile();
+              // Also force refresh staff info for manager and supervisor data
+              staffProvider.forceRefreshStaff();
             } else {
               print('❌ ProfileCard: Auth not ready, showing skeleton');
             }
@@ -103,13 +105,17 @@ class ProfileCard extends StatelessWidget {
             return _buildProfileCard(asyncValue.data!, staffProvider);
           case AsyncValueState.error:
             // If it's an auth error and we just logged in, try to reload
-            if (asyncValue.error.toString().contains('Authentication required')) {
+            if (asyncValue.error
+                .toString()
+                .contains('Authentication required')) {
               WidgetsBinding.instance.addPostFrameCallback((_) async {
                 print('🔄 ProfileCard: Auth error detected, retrying...');
-                final authReady = await authProvider.waitForAuth(timeout: const Duration(seconds: 2));
+                final authReady = await authProvider.waitForAuth(
+                    timeout: const Duration(seconds: 2));
                 if (authReady) {
-                  profileProvider.getProfileInfoSafe();
-                  staffProvider.getStaffInfoSafe();
+                  // Force refresh to ensure clean data
+                  profileProvider.forceRefreshProfile();
+                  staffProvider.forceRefreshStaff();
                 }
               });
               return _buildSkeletonProfileCard();
@@ -123,24 +129,80 @@ class ProfileCard extends StatelessWidget {
   // Helper functions to extract manager and supervisor names from StaffInfo
   String _getManagerName(StaffProvider staffProvider) {
     final staffInfo = staffProvider.staffInfo;
-    if (staffInfo?.state == AsyncValueState.success && staffInfo?.data?.manager != null) {
+    if (staffInfo?.state == AsyncValueState.success &&
+        staffInfo?.data?.manager != null) {
       final manager = staffInfo!.data!.manager!;
       final firstName = manager.firstNameEng ?? manager.firstNameKh ?? '';
       final lastName = manager.lastNameEng ?? manager.lastNameKh ?? '';
-      return '${firstName} ${lastName}'.trim();
+      final fullName = '${firstName} ${lastName}'.trim();
+
+      // Return 'Not Assigned' if the name is empty or just whitespace
+      return fullName.isEmpty ? 'Not Assigned' : fullName;
     }
     return 'Not Assigned';
   }
 
   String _getSupervisorName(StaffProvider staffProvider) {
     final staffInfo = staffProvider.staffInfo;
-    if (staffInfo?.state == AsyncValueState.success && staffInfo?.data?.supervisor != null) {
+    if (staffInfo?.state == AsyncValueState.success &&
+        staffInfo?.data?.supervisor != null) {
       final supervisor = staffInfo!.data!.supervisor!;
       final firstName = supervisor.firstNameEng ?? supervisor.firstNameKh ?? '';
       final lastName = supervisor.lastNameEng ?? supervisor.lastNameKh ?? '';
-      return '${firstName} ${lastName}'.trim();
+      final fullName = '${firstName} ${lastName}'.trim();
+
+      // Return 'Not Assigned' if the name is empty or just whitespace
+      return fullName.isEmpty ? 'Not Assigned' : fullName;
     }
     return 'Not Assigned';
+  }
+
+  /// Safe getter for manager name with additional validation
+  String _getSafeManagerName(
+      StaffProvider? staffProvider, ProfileInfo profile) {
+    // Ensure we have a valid staff provider and it's in a success state
+    if (staffProvider != null &&
+        staffProvider.staffInfo?.state == AsyncValueState.success) {
+      final managerName = _getManagerName(staffProvider);
+
+      // Debug: Print current staff info state
+      print(
+          '🔍 ProfileCard: Staff provider state: ${staffProvider.staffInfo?.state}, Manager: $managerName');
+
+      // If we get a valid manager name from staff provider, use it
+      if (managerName != 'Not Assigned') {
+        return managerName;
+      }
+    }
+
+    // Fallback to profile data if available, otherwise 'Not Assigned'
+    final fallbackName = profile.managerName ?? 'Not Assigned';
+    print('🔍 ProfileCard: Using fallback manager name: $fallbackName');
+    return fallbackName;
+  }
+
+  /// Safe getter for supervisor name with additional validation
+  String _getSafeSupervisorName(
+      StaffProvider? staffProvider, ProfileInfo profile) {
+    // Ensure we have a valid staff provider and it's in a success state
+    if (staffProvider != null &&
+        staffProvider.staffInfo?.state == AsyncValueState.success) {
+      final supervisorName = _getSupervisorName(staffProvider);
+
+      // Debug: Print current staff info state
+      print(
+          '🔍 ProfileCard: Staff provider state: ${staffProvider.staffInfo?.state}, Supervisor: $supervisorName');
+
+      // If we get a valid supervisor name from staff provider, use it
+      if (supervisorName != 'Not Assigned') {
+        return supervisorName;
+      }
+    }
+
+    // Fallback to profile data if available, otherwise 'Not Assigned'
+    final fallbackName = profile.supervisorName ?? 'Not Assigned';
+    print('🔍 ProfileCard: Using fallback supervisor name: $fallbackName');
+    return fallbackName;
   }
 
   Widget _buildSkeletonProfileCard() {
@@ -158,7 +220,7 @@ class ProfileCard extends StatelessWidget {
       status: 'Active',
       memberSince: '2023-01-01',
     );
-    
+
     return Skeletonizer(
       enabled: true,
       effect: const ShimmerEffect(),
@@ -261,7 +323,7 @@ class ProfileCard extends StatelessWidget {
                         ],
                       ),
                       child: ClipOval(
-                        child: profile.profileImage.isNotEmpty 
+                        child: profile.profileImage.isNotEmpty
                             ? Image.network(
                                 profile.profileImage,
                                 fit: BoxFit.cover,
@@ -308,13 +370,13 @@ class ProfileCard extends StatelessWidget {
               ],
             ),
           ),
-          
+
           const Divider(
             color: Colors.white30,
             thickness: 1,
             height: 1,
           ),
-          
+
           // Info section
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -336,7 +398,7 @@ class ProfileCard extends StatelessWidget {
                         iconSize: 14,
                       ),
                       const SizedBox(height: 8),
-                      
+
                       // Department row
                       InfoRow(
                         icon: Icons.business,
@@ -347,7 +409,7 @@ class ProfileCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                
+
                 //middle size column
                 Expanded(
                   flex: 1,
@@ -357,22 +419,21 @@ class ProfileCard extends StatelessWidget {
                     children: [
                       InfoRow(
                         icon: Icons.supervisor_account,
-                        text: staffProvider != null ? _getManagerName(staffProvider) : (profile.managerName ?? 'Not Assigned'),
+                        text: _getSafeManagerName(staffProvider, profile),
                         label: 'Head Of Dept',
                         iconSize: 14,
                       ),
                       const SizedBox(height: 8),
-                      
                       InfoRow(
                         icon: Icons.person,
-                        text: staffProvider != null ? _getSupervisorName(staffProvider) : (profile.supervisorName ?? 'Not Assigned'),
+                        text: _getSafeSupervisorName(staffProvider, profile),
                         label: 'Manager',
                         iconSize: 14,
                       ),
                     ],
                   ),
                 ),
-                
+
                 // Right column
                 Expanded(
                   flex: 1,
@@ -398,7 +459,8 @@ class ProfileCard extends StatelessWidget {
   }
 
   Widget _buildProfileInitial(String name) {
-    final String initial = name.isNotEmpty ? name.trim().split(' ').first[0].toUpperCase() : '?';
+    final String initial =
+        name.isNotEmpty ? name.trim().split(' ').first[0].toUpperCase() : '?';
     return Container(
       color: Colors.blueGrey[700],
       alignment: Alignment.center,

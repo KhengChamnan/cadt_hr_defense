@@ -12,6 +12,7 @@ import 'package:palm_ecommerce_mobile_app_2/providers/auth/auth_provider.dart';
 import 'package:palm_ecommerce_mobile_app_2/providers/settings_provider.dart';
 import 'package:palm_ecommerce_mobile_app_2/providers/profile_provider.dart';
 import 'package:palm_ecommerce_mobile_app_2/providers/approval/approval_provider.dart';
+import 'package:palm_ecommerce_mobile_app_2/providers/staff/staff_provder.dart';
 import 'package:palm_ecommerce_mobile_app_2/providers/asyncvalue.dart';
 
 /// SettingScreen displays the user profile information and settings
@@ -31,7 +32,8 @@ class _SettingScreenState extends State<SettingScreen> {
     super.initState();
     // Load settings data when screen initializes
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final settingsProvider = Provider.of<SettingsProvider>(context, listen: false);
+      final settingsProvider =
+          Provider.of<SettingsProvider>(context, listen: false);
       settingsProvider.loadSettings();
     });
   }
@@ -58,20 +60,23 @@ class _SettingScreenState extends State<SettingScreen> {
                 // Get all providers
                 final authProvider =
                     Provider.of<AuthProvider>(context, listen: false);
-                final settingsProvider = 
+                final settingsProvider =
                     Provider.of<SettingsProvider>(context, listen: false);
-                final profileProvider = 
+                final profileProvider =
                     Provider.of<ProfileProvider>(context, listen: false);
-                final approvalProvider = 
+                final approvalProvider =
                     Provider.of<ApprovalProvider>(context, listen: false);
+                final staffProvider =
+                    Provider.of<StaffProvider>(context, listen: false);
 
                 // Clear all provider data first
                 print('🔄 Starting logout process...');
                 settingsProvider.clearAllData();
                 profileProvider.clearProfileInfo();
                 approvalProvider.clearApprovalDashboard();
+                staffProvider.clearStaffInfo(); // Clear staff data too
                 print('✅ All provider data cleared');
-                
+
                 // Then logout
                 await authProvider.logoutEnhanced();
                 print('✅ Auth logout completed');
@@ -108,7 +113,7 @@ class _SettingScreenState extends State<SettingScreen> {
 
                   // Company profile header - populated from API
                   _buildCompanyProfileSection(settingsProvider),
-                  
+
                   SizedBox(height: PalmSpacings.l),
 
                   // Account settings section
@@ -211,7 +216,7 @@ class _SettingScreenState extends State<SettingScreen> {
 
   Widget _buildCompanyProfileSection(SettingsProvider settingsProvider) {
     final settingsValue = settingsProvider.settingsValue;
-    
+
     if (settingsValue == null) {
       return _buildLoadingCard('Loading company information...');
     }
@@ -222,11 +227,13 @@ class _SettingScreenState extends State<SettingScreen> {
       case AsyncValueState.success:
         final settings = settingsValue.data!;
         return CompanyProfileCard(
-          logoPath: settings.data.contactUs.photo.isNotEmpty 
-              ? settings.data.contactUs.photo 
+          logoPath: settings.data.contactUs.photo.isNotEmpty
+              ? settings.data.contactUs.photo
               : 'assets/images/palm_logo.png',
-          companyName: 'Buntheuorn PhoneShop', // Could be extracted from settings if available
-          contactInfo: '${settings.data.contactUs.phone} | ${settings.data.contactUs.email}',
+          companyName:
+              'Buntheuorn PhoneShop', // Could be extracted from settings if available
+          contactInfo:
+              '${settings.data.contactUs.phone} | ${settings.data.contactUs.email}',
           location: settings.data.contactUs.address,
         );
       case AsyncValueState.error:
@@ -247,7 +254,9 @@ class _SettingScreenState extends State<SettingScreen> {
           subtitle: 'Get in touch with our support team',
           onTap: () async {
             await settingsProvider.getContactInfo();
-            if (settingsProvider.contactInfoValue?.state == AsyncValueState.success && mounted) {
+            if (settingsProvider.contactInfoValue?.state ==
+                    AsyncValueState.success &&
+                mounted) {
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -256,7 +265,8 @@ class _SettingScreenState extends State<SettingScreen> {
                   ),
                 ),
               );
-            } else if (settingsProvider.contactInfoValue?.state == AsyncValueState.error) {
+            } else if (settingsProvider.contactInfoValue?.state ==
+                AsyncValueState.error) {
               _showErrorSnackBar('Failed to load contact information');
             }
           },
@@ -267,7 +277,9 @@ class _SettingScreenState extends State<SettingScreen> {
           subtitle: 'Learn more about our company',
           onTap: () async {
             await settingsProvider.getAboutInfo();
-            if (settingsProvider.aboutInfoValue?.state == AsyncValueState.success && mounted) {
+            if (settingsProvider.aboutInfoValue?.state ==
+                    AsyncValueState.success &&
+                mounted) {
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -276,7 +288,8 @@ class _SettingScreenState extends State<SettingScreen> {
                   ),
                 ),
               );
-            } else if (settingsProvider.aboutInfoValue?.state == AsyncValueState.error) {
+            } else if (settingsProvider.aboutInfoValue?.state ==
+                AsyncValueState.error) {
               _showErrorSnackBar('Failed to load about information');
             }
           },
@@ -286,7 +299,8 @@ class _SettingScreenState extends State<SettingScreen> {
           title: 'Terms & Conditions',
           subtitle: 'Read our terms and conditions',
           onTap: () async {
-            await _navigateToPolicy('Terms & Conditions', settingsProvider, 'terms');
+            await _navigateToPolicy(
+                'Terms & Conditions', settingsProvider, 'terms');
           },
         ),
         SettingItem(
@@ -294,7 +308,8 @@ class _SettingScreenState extends State<SettingScreen> {
           title: 'Privacy Policy',
           subtitle: 'View our privacy policy',
           onTap: () async {
-            await _navigateToPolicy('Privacy Policy', settingsProvider, 'privacy');
+            await _navigateToPolicy(
+                'Privacy Policy', settingsProvider, 'privacy');
           },
         ),
         SettingItem(
@@ -302,7 +317,8 @@ class _SettingScreenState extends State<SettingScreen> {
           title: 'Return Policy',
           subtitle: 'Learn about our return policy',
           onTap: () async {
-            await _navigateToPolicy('Return Policy', settingsProvider, 'return');
+            await _navigateToPolicy(
+                'Return Policy', settingsProvider, 'return');
           },
         ),
         SettingItem(
@@ -316,8 +332,6 @@ class _SettingScreenState extends State<SettingScreen> {
       ],
     );
   }
-
- 
 
   Widget _buildLoadingCard(String message) {
     return Container(
@@ -397,7 +411,8 @@ class _SettingScreenState extends State<SettingScreen> {
     );
   }
 
-  Future<void> _navigateToPolicy(String title, SettingsProvider settingsProvider, String policyType) async {
+  Future<void> _navigateToPolicy(String title,
+      SettingsProvider settingsProvider, String policyType) async {
     // Show loading indicator
     _showLoadingSnackBar('Loading $title...');
 
@@ -406,10 +421,11 @@ class _SettingScreenState extends State<SettingScreen> {
       await settingsProvider.loadSettings();
     }
 
-    if (settingsProvider.settingsValue?.state == AsyncValueState.success && mounted) {
+    if (settingsProvider.settingsValue?.state == AsyncValueState.success &&
+        mounted) {
       final settings = settingsProvider.settingsValue!.data!;
       String content = '';
-      
+
       switch (policyType) {
         case 'terms':
           content = settings.data.termCondition.termCondition;

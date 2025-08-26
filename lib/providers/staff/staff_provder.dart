@@ -25,12 +25,48 @@ class StaffProvider extends ChangeNotifier {
 
   /// Safe method to get staff info that prevents duplicate loading
   Future<void> getStaffInfoSafe() async {
-    // Don't load if already loading or if we have successful data
-    if (staffInfo?.state == AsyncValueState.loading ||
-        staffInfo?.state == AsyncValueState.success) {
-      return;
-    }
-    
+    // Only proceed if not already loading or loaded
+    if (staffInfo?.state == AsyncValueState.loading) return;
+    if (staffInfo?.state == AsyncValueState.success) return;
+
+    // Schedule the actual call after the current frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      getStaffInfo();
+    });
+  }
+
+  /// Clear all staff data (used during logout)
+  void clearStaffInfo() {
+    print('🧹 StaffProvider: Clearing staff data...');
+    staffInfo = null;
+    notifyListeners();
+    print('✅ StaffProvider: Staff data cleared successfully');
+  }
+
+  /// Force refresh staff data (for new login sessions)
+  void forceRefreshStaff() {
+    print('🔄 StaffProvider: Force refreshing staff...');
+    staffInfo = null;
+
+    // Trigger immediate refresh
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      getStaffInfoSafe();
+    });
+  }
+
+  /// Load staff data after successful authentication
+  Future<void> loadStaffAfterAuth() async {
+    print('🔄 StaffProvider: Loading staff after auth...');
+
+    // Clear any previous error states
+    staffInfo = null;
+
+    // Wait a bit for auth to settle
+    await Future.delayed(const Duration(milliseconds: 400));
+
+    // Load staff info
     await getStaffInfo();
+
+    print('✅ StaffProvider: Post-auth staff loading completed');
   }
 }
