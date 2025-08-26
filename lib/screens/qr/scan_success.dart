@@ -51,12 +51,13 @@ class _ScanSuccessState extends State<ScanSuccess> {
 
       // Validate working hours
       print('⏰ Validating working hours...');
-      if (!_isWithinWorkingHours()) {
-        print('❌ Outside working hours, showing error');
-        _showWorkingHoursError();
-        return;
-      }
-      print('✅ Working hours validated');
+      // TODO: Commented out for mockup screenshots - uncomment for production
+      // if (!_isWithinWorkingHours()) {
+      //   print('❌ Outside working hours, showing error');
+      //   _showWorkingHoursError();
+      //   return;
+      // }
+      print('✅ Working hours validation skipped for mockup');
 
       // Determine status (in/out) based on latest attendance record
       print('🔄 Determining attendance status...');
