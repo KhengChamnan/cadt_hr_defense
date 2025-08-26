@@ -7,6 +7,9 @@ jobs:
   build-ios:
     name: 🎉 iOS Build
     runs-on: macos-latest
+    permissions:
+      contents: write
+      packages: write
     steps:
       - uses: actions/checkout@v3
 
@@ -32,11 +35,24 @@ jobs:
         run: zip -qq -r -9 FlutterIpaExport.ipa Payload
         working-directory: build/ios/iphoneos
 
-      - name: Upload binaries to release
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: build/ios/iphoneos/FlutterIpaExport.ipa
-          tag: v1.0
-          overwrite: true
-          body: "This is first release"
+      - name: Create Release and Upload Asset
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG_NAME="v1.0.${{ github.run_number }}"
+          RELEASE_NAME="iOS Release v1.0.${{ github.run_number }}"
+          
+          # Create release
+          gh release create "$TAG_NAME" \
+            --title "$RELEASE_NAME" \
+            --notes "This is an iOS release build
+
+          Built from commit: ${{ github.sha }}
+
+          ## Changes
+          - Initial iOS release build" \
+            --draft=false \
+            --prerelease=false || true
+          
+          # Upload asset
+          gh release upload "$TAG_NAME" build/ios/iphoneos/FlutterIpaExport.ipa --clobber
