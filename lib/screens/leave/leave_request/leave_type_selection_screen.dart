@@ -504,14 +504,6 @@ class _LeaveTypeSelectionScreenState extends State<LeaveTypeSelectionScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const LoadingWidget(),
-                      const SizedBox(height: PalmSpacings.l),
-                      Text(
-                        'Submitting your leave request...',
-                        style: PalmTextStyles.body.copyWith(
-                          color: PalmColors.textNormal,
-                          fontSize: 16,
-                        ),
-                      ),
                     ],
                   ),
                 ),

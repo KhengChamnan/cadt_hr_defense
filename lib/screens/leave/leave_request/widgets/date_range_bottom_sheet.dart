@@ -854,7 +854,7 @@ class _DateRangeBottomSheetContentState
         return '${displayDays.toStringAsFixed(1)} days remaining after this request';
       }
     }
-    return 'Balance not available';
+    return '';
   }
 
   /// Check if the request would result in negative balance
